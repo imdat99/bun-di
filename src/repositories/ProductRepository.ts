@@ -1,8 +1,8 @@
-import { singleton } from 'tsyringe';
 import { IRepository } from './IRepository';
 import { Product, CreateProductDto } from '../models/Product';
+import { Injectable } from '../core/decorators';
 
-@singleton()
+@Injectable()
 export class ProductRepository implements IRepository<Product> {
   private products: Map<string, Product> = new Map();
   private idCounter = 1;
@@ -99,7 +99,7 @@ export class ProductRepository implements IRepository<Product> {
 
     product.stock += quantity;
     product.updatedAt = new Date();
-    
+
     this.products.set(id, product);
     return product;
   }

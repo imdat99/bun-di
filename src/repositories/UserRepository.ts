@@ -1,8 +1,8 @@
-import { singleton } from 'tsyringe';
 import { IRepository } from './IRepository';
 import { User, CreateUserDto } from '../models/User';
+import { Injectable } from '../core/decorators';
 
-@singleton()
+@Injectable()
 export class UserRepository implements IRepository<User> {
   private users: Map<string, User> = new Map();
   private idCounter = 1;
@@ -52,7 +52,7 @@ export class UserRepository implements IRepository<User> {
   async create(data: CreateUserDto): Promise<User> {
     const id = String(this.idCounter++);
     const now = new Date();
-    
+
     const user: User = {
       id,
       email: data.email,

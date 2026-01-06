@@ -1,7 +1,7 @@
-import { singleton } from 'tsyringe';
 import { ILogger } from '../common/interfaces/ILogger';
+import { Injectable } from '../core/decorators';
 
-@singleton()
+@Injectable()
 export class LoggerService implements ILogger {
   private getTimestamp(): string {
     return new Date().toISOString();

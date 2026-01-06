@@ -1,0 +1,17 @@
+export const METADATA_KEYS = {
+    MODULE: Symbol('module'),
+    CONTROLLER: Symbol('controller'),
+    FLUSH_ROLES: Symbol('flush_roles'),
+    OPTS: Symbol('opts'),
+    PARAMS: Symbol('params'),
+    ROUTES: Symbol('routes'),
+    FILTER_CATCH: Symbol('filter_catch'),
+    FILTER_EXCEPTION: Symbol('filter_exception'),
+    USE_FILTERS: Symbol('use_filters'),
+    USE_PIPES: Symbol('use_pipes'),
+    INJECTIONS: Symbol('injections'),
+    OPTIONAL: Symbol('optional'),
+    SCOPE: Symbol('scope'),
+    METHOD_INJECTIONS: Symbol('method_injections'),
+    METHOD_OPTIONAL: Symbol('method_optional'),
+};
