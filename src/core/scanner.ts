@@ -1,11 +1,9 @@
-import { Container } from './injector/container';
-import { Module } from './injector/module';
+import { Module, Container, Scope } from './injector';
 import { METADATA_KEYS } from './constants';
 import { InstanceWrapper } from './injector/instance-wrapper';
 import { InjectionToken } from './injector/token';
-import { Scope } from './injector/scope';
 import { ModuleOptions } from './decorators';
-import { Type } from './interfaces';
+import { Type, DynamicModule } from './interfaces';
 
 
 export class NestScanner {
@@ -15,7 +13,17 @@ export class NestScanner {
         await this.scanModule(module);
     }
 
-    private async scanModule(moduleClass: Type<any>, scope: Type<any>[] = []) {
+    private async scanModule(moduleDefinition: Type<any> | DynamicModule, scope: Type<any>[] = []) {
+        let moduleClass: Type<any>;
+        let dynamicMetadata: Partial<DynamicModule> = {};
+
+        if (moduleDefinition && 'module' in moduleDefinition) {
+            moduleClass = (moduleDefinition as DynamicModule).module;
+            dynamicMetadata = moduleDefinition as DynamicModule;
+        } else {
+            moduleClass = moduleDefinition as Type<any>;
+        }
+
         // 1. Check if module already exists
         const token = moduleClass.name; // Simple token strategy
         if (this.container.getModuleByToken(token)) {
@@ -25,11 +33,33 @@ export class NestScanner {
         // 2. Register Module
         const moduleRef = this.container.addModule(moduleClass, token);
 
+        // Register Module Class itself as a provider (to support DI and Lifecycle hooks)
+        const moduleWrapper = new InstanceWrapper({
+            token: moduleClass,
+            name: moduleClass.name,
+            metatype: moduleClass,
+            host: moduleRef,
+            scope: Scope.DEFAULT,
+        });
+        this.scanDependencies(moduleWrapper);
+        moduleRef.addProvider(moduleWrapper);
+
         // 3. Get Metadata
-        const options = Reflect.getMetadata(METADATA_KEYS.MODULE, moduleClass) as ModuleOptions;
-        if (!options) {
-            return moduleRef;
+        const decoratorOptions = Reflect.getMetadata(METADATA_KEYS.MODULE, moduleClass) as ModuleOptions || {};
+        const isGlobal = Reflect.getMetadata(METADATA_KEYS.GLOBAL, moduleClass);
+        if (isGlobal) {
+            this.container.addGlobalModule(moduleRef);
         }
+
+        // Merge options
+        const options: ModuleOptions = {
+            ...decoratorOptions,
+            ...dynamicMetadata,
+            imports: [...(decoratorOptions.imports || []), ...(dynamicMetadata.imports || [])],
+            providers: [...(decoratorOptions.providers || []), ...(dynamicMetadata.providers || [])],
+            exports: [...(decoratorOptions.exports || []), ...(dynamicMetadata.exports || [])],
+            controllers: [...(decoratorOptions.controllers || []), ...(dynamicMetadata.controllers || [])],
+        };
 
         // 4. Register Imports recursively
         if (options.imports) {
@@ -39,6 +69,7 @@ export class NestScanner {
                 let actualImport = importedModule;
                 // TODO: Handle forwardRef()
 
+                // Recursively scan
                 const importedRef = await this.scanModule(actualImport, [...scope, moduleClass]);
                 if (importedRef) {
                     moduleRef.addImport(importedRef);
@@ -72,21 +103,46 @@ export class NestScanner {
     }
 
     private insertProvider(provider: any, moduleRef: Module) {
-        // Handle ClassProvider, ValueProvider, FactoryProvider
-        // For now assume ClassProvider (standard service class)
-        const token = provider;
-        // Metadata scan for scope
-        // const scope = Reflect.getMetadata(METADATA_KEYS.SCOPE, provider) || Scope.DEFAULT;
+        const isCustomProvider = provider && !provider.constructor; // Simplistic check, better check for 'provide' key
+        // Actually, a class is a function. An object is not.
+        const isPlainObject = provider && typeof provider === 'object' && 'provide' in provider;
 
+        if (!isPlainObject) {
+            // Standard Class Provider
+            const token = provider;
+            const wrapper = new InstanceWrapper({
+                token,
+                name: token.name,
+                metatype: provider,
+                host: moduleRef,
+                scope: Scope.DEFAULT
+            });
+            this.scanDependencies(wrapper);
+            moduleRef.addProvider(wrapper);
+            return;
+        }
+
+        // Custom Provider
+        const token = provider.provide;
         const wrapper = new InstanceWrapper({
             token,
-            name: token.name,
-            metatype: provider,
+            name: (token && token.name) ? token.name : (typeof token === 'string' ? token : 'CustomProvider'),
             host: moduleRef,
-            scope: Scope.DEFAULT // Default to Singleton if not specified
+            scope: provider.scope || Scope.DEFAULT,
         });
-        // Scan constructor params?
-        this.scanDependencies(wrapper);
+
+        if (provider.useValue !== undefined) {
+            wrapper.useValue = provider.useValue;
+        } else if (provider.useFactory) {
+            wrapper.useFactory = provider.useFactory;
+            wrapper.inject = provider.inject || [];
+        } else if (provider.useClass) {
+            wrapper.metatype = provider.useClass;
+            this.scanDependencies(wrapper); // Scan the actual class
+        } else if (provider.useExisting) {
+            wrapper.useExisting = provider.useExisting;
+            wrapper.isAlias = true;
+        }
 
         moduleRef.addProvider(wrapper);
     }
@@ -104,7 +160,7 @@ export class NestScanner {
         moduleRef.addController(wrapper);
     }
 
-    private scanDependencies(wrapper: InstanceWrapper) {
+    public scanDependencies(wrapper: InstanceWrapper) {
         // Use reflect-metadata to get constructor param types
         const paramTypes = Reflect.getMetadata('design:paramtypes', wrapper.metatype as any) || [];
         const injections = Reflect.getMetadata(METADATA_KEYS.INJECTIONS, wrapper.metatype as any) || [];
@@ -121,5 +177,17 @@ export class NestScanner {
 
         wrapper.inject = mergedInject;
         wrapper.isOptional = mergedOptional;
+
+        // Property dependencies
+        const propertyDeps = Reflect.getMetadata(METADATA_KEYS.PROPERTY_DEPS, wrapper.metatype as any) || [];
+        const optionalProps = Reflect.getMetadata(METADATA_KEYS.OPTIONAL, wrapper.metatype as any) || [];
+
+        wrapper.properties = propertyDeps.map((dep: any) => {
+            return {
+                key: dep.key,
+                token: dep.token,
+                isOptional: optionalProps.includes(dep.key),
+            };
+        });
     }
 }

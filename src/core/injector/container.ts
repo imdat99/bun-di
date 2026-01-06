@@ -4,7 +4,7 @@ import { Type } from '../interfaces';
 
 export class Container {
     private readonly modules = new Map<string, Module>();
-    // Map internal tokens (module class hash/name) to Module instances
+    private readonly globalModules = new Set<Module>();
 
     public addModule(moduleMeta: Type<any>, token: string): Module {
         if (!this.modules.has(token)) {
@@ -13,6 +13,14 @@ export class Container {
             return module;
         }
         return this.modules.get(token)!;
+    }
+
+    public addGlobalModule(module: Module) {
+        this.globalModules.add(module);
+    }
+
+    public getGlobalModules(): Set<Module> {
+        return this.globalModules;
     }
 
     public getModuleByToken(token: string): Module | undefined {

@@ -7,6 +7,8 @@ import { Scope } from './scope';
 import { METADATA_KEYS } from '../constants';
 
 export class Injector {
+    constructor(private readonly container?: Container) { }
+
     public async resolveConstructorParams<T>(
         wrapper: InstanceWrapper<T>,
         module: Module,
@@ -77,6 +79,22 @@ export class Injector {
             }
         }
 
+        // Check Global Modules
+        if (this.container) {
+            for (const globalModule of this.container.getGlobalModules()) {
+                if (globalModule === module) continue; // Skip self
+                // Global modules export everything? Or just what is in exports?
+                // NestJS: Global modules still need to export providers to be visible.
+                if (globalModule.exports.has(token)) {
+                    if (globalModule.hasProvider(token)) {
+                        return globalModule.getProvider(token);
+                    }
+                    const nestedWrapper = this.lookupProvider(token, globalModule);
+                    if (nestedWrapper) return nestedWrapper;
+                }
+            }
+        }
+
         return undefined;
     }
 
@@ -94,8 +112,50 @@ export class Injector {
             if (existing) return existing;
         }
 
-        // Creating instance
-        const { metatype, inject } = wrapper;
+        // Handle Aliases (useExisting)
+        if (wrapper.isAlias) {
+            const targetToken = wrapper.useExisting;
+            const instance = await this.resolveSingleParam<T>(targetToken, wrapper.host!, contextId, inquire);
+            if (wrapper.scope === Scope.DEFAULT) {
+                wrapper.instance = instance;
+                wrapper.isResolved = true;
+            } else {
+                wrapper.setInstanceByContextId(contextId, instance!);
+            }
+            return instance!;
+        }
+
+        // Handle Value Provider
+        if (wrapper.useValue !== undefined) {
+            wrapper.instance = wrapper.useValue;
+            wrapper.isResolved = true;
+            return wrapper.instance as T;
+        }
+
+        // Handle Factory Provider
+        if (wrapper.useFactory) {
+            const dependencies = wrapper.inject || [];
+            const args = await this.resolveConstructorParams(
+                wrapper,
+                wrapper.host!,
+                dependencies,
+                (args) => { },
+                contextId,
+                inquire
+            );
+            const instance = await wrapper.useFactory(...args);
+
+            if (wrapper.scope === Scope.DEFAULT) {
+                wrapper.instance = instance;
+                wrapper.isResolved = true;
+            } else {
+                wrapper.setInstanceByContextId(contextId, instance);
+            }
+            return instance as T;
+        }
+
+        // Class Provider (Standard)
+        const { metatype } = wrapper;
         if (!metatype || typeof metatype !== 'function') {
             throw new Error('Invalid metatype');
         }
@@ -104,11 +164,6 @@ export class Injector {
         // If inject is undefined, try to retrieve from metadata (design:paramtypes)
         // Note: This merging logic should ideally happen during scanning
         let dependencies = wrapper.inject || [];
-
-        // Fallback to decorators if not populated
-        if (dependencies.length === 0) {
-            // already handled in scanner but double check
-        }
 
         const constructorArgs = await this.resolveConstructorParams(
             wrapper,
@@ -120,6 +175,22 @@ export class Injector {
         );
 
         const instance = new (metatype as any)(...constructorArgs);
+
+        // Resolve Property Dependencies
+        if (wrapper.properties) {
+            for (const prop of wrapper.properties) {
+                const propInstance = await this.resolveSingleParam(
+                    prop.token,
+                    wrapper.host!,
+                    contextId,
+                    inquire,
+                    prop.isOptional
+                );
+                if (propInstance !== undefined) {
+                    (instance as any)[prop.key] = propInstance;
+                }
+            }
+        }
 
         // Cache instance
         if (wrapper.scope === Scope.DEFAULT) {

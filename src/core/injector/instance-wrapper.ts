@@ -8,17 +8,24 @@ export class InstanceWrapper<T = any> {
     public readonly id: string;
     public readonly token: InjectionToken;
     public readonly name?: string;
-    public readonly metatype?: Type<T> | Function;
+    public metatype?: Type<T> | Function;
     public scope: Scope = Scope.DEFAULT;
     public host?: Module; // Generic logic
     public inject?: InjectionToken[];
     public isOptional?: boolean[];
+    public properties?: { key: string | symbol; token: InjectionToken; isOptional?: boolean }[];
+
 
     public instance?: T; // Singleton instance
     private readonly instancesPerContext = new Map<ContextId, T>();
 
     public isResolved = false;
     public isPending = false; // For circular dependency detection
+
+    public isAlias = false;
+    public useFactory?: Function;
+    public useValue?: any;
+    public useExisting?: any;
 
     constructor(metadata: Partial<InstanceWrapper<T>> & { token: InjectionToken }) {
         this.token = metadata.token;
@@ -28,6 +35,10 @@ export class InstanceWrapper<T = any> {
         this.host = metadata.host;
         this.instance = metadata.instance;
         this.inject = metadata.inject;
+        this.useFactory = metadata.useFactory;
+        this.useValue = metadata.useValue;
+        this.useExisting = metadata.useExisting;
+        this.isAlias = !!metadata.useExisting;
         this.id = Math.random().toString(36).substring(7); // Simple ID for now
     }
 

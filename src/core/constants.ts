@@ -1,5 +1,6 @@
 export const METADATA_KEYS = {
     MODULE: Symbol('module'),
+    GLOBAL: Symbol('global'),
     CONTROLLER: Symbol('controller'),
     FLUSH_ROLES: Symbol('flush_roles'),
     OPTS: Symbol('opts'),
@@ -9,9 +10,16 @@ export const METADATA_KEYS = {
     FILTER_EXCEPTION: Symbol('filter_exception'),
     USE_FILTERS: Symbol('use_filters'),
     USE_PIPES: Symbol('use_pipes'),
+    USE_GUARDS: Symbol('use_guards'),
+    USE_INTERCEPTORS: Symbol('use_interceptors'),
+    ROUTE_ARGS_METADATA: Symbol('route_args_metadata'),
     INJECTIONS: Symbol('injections'),
     OPTIONAL: Symbol('optional'),
     SCOPE: Symbol('scope'),
     METHOD_INJECTIONS: Symbol('method_injections'),
     METHOD_OPTIONAL: Symbol('method_optional'),
+    PROPERTY_DEPS: Symbol('property_deps'),
+    HTTP_CODE: Symbol('http_code'),
+    HEADERS: Symbol('headers'),
+    REDIRECT: Symbol('redirect'),
 };

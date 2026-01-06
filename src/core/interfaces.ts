@@ -38,6 +38,18 @@ export interface PipeTransform<T = any, R = any> {
     transform(value: T, metadata: ArgumentMetadata): R;
 }
 
+export interface CanActivate {
+    canActivate(context: ExecutionContext): boolean | Promise<boolean>;
+}
+
+export interface CallHandler<T = any> {
+    handle(): Promise<T>;
+}
+
+export interface NestInterceptor<T = any, R = any> {
+    intercept(context: ExecutionContext, next: CallHandler<T>): Promise<R> | any; // Observable in Nest, Promise/any here
+}
+
 export interface OnModuleInit {
     onModuleInit(): any;
 }
@@ -57,3 +69,57 @@ export interface BeforeApplicationShutdown {
 export interface OnApplicationShutdown {
     onApplicationShutdown(signal?: string): any;
 }
+
+export type Provider<T = any> =
+    | Type<any>
+    | ClassProvider<T>
+    | ValueProvider<T>
+    | FactoryProvider<T>
+    | ExistingProvider<T>;
+
+export interface ClassProvider<T = any> {
+    provide: any;
+    useClass: Type<T>;
+    scope?: Scope;
+}
+
+export interface ValueProvider<T = any> {
+    provide: any;
+    useValue: T;
+}
+
+export interface FactoryProvider<T = any> {
+    provide: any;
+    useFactory: (...args: any[]) => T | Promise<T>;
+    inject?: any[];
+    scope?: Scope;
+}
+
+export interface ExistingProvider<T = any> {
+    provide: any;
+    useExisting: any;
+}
+
+export interface DynamicModule extends ModuleOptions {
+    module: Type<any>;
+    global?: boolean;
+}
+
+export interface ForwardReference {
+    forwardRef: () => Type<any>;
+}
+
+import { ModuleOptions } from './decorators';
+
+export interface INestApplication {
+    useGlobalFilters(...filters: ExceptionFilter[]): this;
+    useGlobalPipes(...pipes: PipeTransform[]): this;
+    useGlobalInterceptors(...interceptors: NestInterceptor[]): this;
+    useGlobalGuards(...guards: CanActivate[]): this;
+    init(): Promise<this>;
+    listen(port: number | string, callback?: () => void): Promise<any>;
+    getHttpAdapter(): any;
+    get<TInput = any, TResult = TInput>(typeOrToken: Type<TInput> | string | symbol, options?: { strict?: boolean }): TResult;
+    close(): Promise<void>;
+}
+

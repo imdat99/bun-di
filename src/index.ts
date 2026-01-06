@@ -5,6 +5,7 @@ import { logger } from 'hono/logger';
 import { env } from './config/env';
 import { BunDIFactory } from './core/factory';
 import { AppModule } from './AppModule';
+import { showRoutes } from 'hono/dev';
 
 // Register all dependencies in the DI container
 // registerDependencies();
@@ -12,13 +13,13 @@ import { AppModule } from './AppModule';
 // Get logger instance for startup messages
 // const appLogger = container.resolve(LoggerService);
 
-const app = new Hono();
+const app = new Hono().basePath('/api');
 
 // Middleware
 app.use(logger(), cors());
-
 // Bootstrap the application
 BunDIFactory.create(AppModule, app);
+showRoutes(app);
 
 console.log(`🚀 Server is running on http://localhost:${env.PORT}`);
 console.log(`📝 Environment: ${env.NODE_ENV}`);
