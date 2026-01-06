@@ -1,4 +1,5 @@
 import { Context } from 'hono';
+import { Observable } from 'rxjs';
 
 export type Scope = 'DEFAULT' | 'TRANSIENT' | 'REQUEST';
 
@@ -43,11 +44,11 @@ export interface CanActivate {
 }
 
 export interface CallHandler<T = any> {
-    handle(): Promise<T>;
+    handle(): Observable<T>;
 }
 
 export interface NestInterceptor<T = any, R = any> {
-    intercept(context: ExecutionContext, next: CallHandler<T>): Promise<R> | any; // Observable in Nest, Promise/any here
+    intercept(context: ExecutionContext, next: CallHandler<T>): Observable<R> | Promise<Observable<R>>;
 }
 
 export interface OnModuleInit {
@@ -107,6 +108,30 @@ export interface DynamicModule extends ModuleOptions {
 
 export interface ForwardReference {
     forwardRef: () => Type<any>;
+}
+
+export interface NestMiddleware {
+    use(req: any, res: any, next: () => void): any;
+}
+
+export interface MiddlewareConsumer {
+    apply(...middleware: (Type<any> | Function)[]): MiddlewareConfigProxy;
+}
+
+export interface MiddlewareConfigProxy {
+    exclude(...routes: (string | RouteInfo)[]): MiddlewareConfigProxy;
+    forRoutes(...routes: (string | Type<any> | RouteInfo)[]): MiddlewareConsumer;
+}
+
+export interface RouteInfo {
+    path: string;
+    method: RequestMethod;
+}
+
+import { RequestMethod } from './decorators';
+
+export interface NestModule {
+    configure(consumer: MiddlewareConsumer): void;
 }
 
 import { ModuleOptions } from './decorators';

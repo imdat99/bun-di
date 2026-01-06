@@ -5,6 +5,7 @@ import { InjectionToken } from './token';
 import { ContextId } from './context-id';
 import { Scope } from './scope';
 import { METADATA_KEYS } from '../constants';
+import { ModuleRef, ModuleRefImpl } from './module-ref';
 
 export class Injector {
     constructor(private readonly container?: Container) { }
@@ -45,6 +46,17 @@ export class Injector {
         inquire: InstanceWrapper[],
         isOptional: boolean = false
     ): Promise<T | undefined> {
+        let isForwardRef = false;
+        // Unwrap forwardRef
+        if (token && (token as any).forwardRef) {
+            token = (token as any).forwardRef();
+            isForwardRef = true;
+        }
+
+        if (token === ModuleRef) {
+            return new ModuleRefImpl(this.container!, this, targetModule) as any;
+        }
+
         // 1. Resolve Provider Wrapper
         const wrapper = this.lookupProvider(token, targetModule);
 
@@ -53,6 +65,19 @@ export class Injector {
                 return undefined;
             }
             throw new Error(`Nest can't resolve dependencies of the ${targetModule.metatype.name} (??). Please make sure that the argument "${token.toString()}" at index [?] is available in the ${targetModule.metatype.name} context.`);
+        }
+
+        if (isForwardRef) {
+            // Return Proxy
+            return new Proxy({}, {
+                get: (target, prop) => {
+                    if (prop === 'then') return undefined;
+                    if (!wrapper.instance) {
+                        // console.warn(`Accessing forwardRef dependency ${wrapper.name} before instantiation`);
+                    }
+                    return (wrapper.instance as any)?.[prop];
+                }
+            }) as any;
         }
 
         // 2. Resolve Instance

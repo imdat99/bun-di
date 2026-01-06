@@ -64,10 +64,11 @@ export class NestScanner {
         // 4. Register Imports recursively
         if (options.imports) {
             for (const importedModule of options.imports) {
-                // Check if it's a dynamic module (not supported yet, assuming class)
-                // If it's a forwardRef, it might be a function
                 let actualImport = importedModule;
-                // TODO: Handle forwardRef()
+                // Check if it's a forwardRef
+                if (importedModule && importedModule.forwardRef) {
+                    actualImport = importedModule.forwardRef();
+                }
 
                 // Recursively scan
                 const importedRef = await this.scanModule(actualImport, [...scope, moduleClass]);

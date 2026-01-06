@@ -1,16 +1,21 @@
 import 'reflect-metadata';
 import { Hono, Context } from 'hono';
+import { Observable, from, lastValueFrom } from 'rxjs';
+import { mergeMap } from 'rxjs/operators';
 import { Container } from './injector/container';
 import { NestScanner } from './scanner';
 import { Injector } from './injector/injector';
 import { METADATA_KEYS } from './constants';
-import { RouteDefinition, RouteParamtypes } from './decorators';
+import { RouteDefinition, RouteParamtypes, RequestMethod } from './decorators';
 import { ContextId } from './injector/context-id';
 import { Scope } from './injector/scope';
 import { ExecutionContextHost } from './execution-context-host';
 import { InstanceWrapper } from './injector/instance-wrapper';
 import { Type, INestApplication } from './interfaces';
 import { BunApplication } from './application';
+import { MiddlewareBuilder } from './middleware/builder';
+import { HttpException } from '../common/exceptions';
+import { StatusCode } from 'hono/utils/http-status';
 
 export class BunDIFactory {
     public static async create(rootModule: any, app?: Hono): Promise<INestApplication> {
@@ -28,11 +33,15 @@ export class BunDIFactory {
         console.log('[BunDI] Instantiating providers...');
         await this.instantiateProviders(container, injector);
 
-        // 3. Register Controllers
+        // 3. Initialize Middleware
+        console.log('[BunDI] Initializing middleware...');
+        await this.initializeMiddleware(honoApp, container, injector);
+
+        // 4. Register Controllers
         console.log('[BunDI] Registering controllers...');
         this.registerControllersFromContainer(honoApp, container, injector, bunApp);
 
-        // 4. Call OnModuleInit
+        // 5. Call OnModuleInit
         console.log('[BunDI] Calling OnModuleInit...');
         await this.callLifecycleHook('onModuleInit', container);
 
@@ -174,20 +183,34 @@ export class BunDIFactory {
                         args.push(c);
                     }
 
-                    const next = async () => {
-                        return await handler(...args);
-                    };
-
-                    const interceptorChain = async (index: number, nextHandler: () => Promise<any>): Promise<any> => {
+                    const interceptorChain = async (index: number): Promise<Observable<any>> => {
                         if (index >= interceptors.length) {
-                            return await nextHandler();
+                            return new Observable((subscriber) => {
+                                try {
+                                    const result = handler(...args);
+                                    if (result instanceof Promise) {
+                                        result
+                                            .then((data) => {
+                                                subscriber.next(data);
+                                                subscriber.complete();
+                                            })
+                                            .catch((err) => subscriber.error(err));
+                                    } else {
+                                        subscriber.next(result);
+                                        subscriber.complete();
+                                    }
+                                } catch (err) {
+                                    subscriber.error(err);
+                                }
+                            });
                         }
-                        return await interceptors[index].intercept(executionContext, {
-                            handle: () => interceptorChain(index + 1, nextHandler)
+                        return interceptors[index].intercept(executionContext, {
+                            handle: () => from(interceptorChain(index + 1)).pipe(mergeMap((obs) => obs))
                         });
                     };
 
-                    const result = await interceptorChain(0, next);
+                    const obs = await interceptorChain(0);
+                    const result = await lastValueFrom(obs);
 
                     // Handle @HttpCode
                     const httpCode = Reflect.getMetadata(METADATA_KEYS.HTTP_CODE, (controllerInstance as any)[route.methodName]);
@@ -251,6 +274,13 @@ export class BunDIFactory {
         }
 
         console.error(exception);
+
+        if (exception instanceof HttpException) {
+            const status = exception.getStatus();
+            const response = exception.getResponse();
+            c.status(status as StatusCode);
+            return c.json(response);
+        }
 
         if (exception instanceof Error) {
             c.status(500);
@@ -339,6 +369,131 @@ export class BunDIFactory {
             if (!result) return false;
         }
         return true;
+    }
+
+    private static async initializeMiddleware(app: Hono, container: Container, injector: Injector) {
+        const builder = new MiddlewareBuilder();
+        const modules = container.getModules();
+
+        for (const module of modules.values()) {
+            const moduleClass = module.metatype;
+            const wrapper = module.getProvider(moduleClass);
+            if (wrapper && wrapper.instance && (wrapper.instance as any).configure) {
+                (wrapper.instance as any).configure(builder);
+            }
+        }
+
+        const configs = builder.getConfigs();
+        if (configs.length === 0) return;
+
+        // Pre-resolve middleware instances (Singleton assumption)
+        const resolvedConfigs: any[] = [];
+        const globalContextId = new ContextId();
+
+        for (const config of configs) {
+            const instances: any[] = [];
+            for (const m of config.middleware) {
+                if (typeof m === 'function' && !m.prototype?.use) {
+                    // Functional middleware
+                    instances.push(m);
+                } else {
+                    // Class middleware
+                    const wrapper = new InstanceWrapper({
+                        token: m,
+                        name: m.name,
+                        metatype: m,
+                        scope: Scope.TRANSIENT
+                    });
+                    const scanner = new NestScanner(container);
+                    scanner.scanDependencies(wrapper);
+                    const hostModule = modules.values().next().value;
+                    wrapper.host = hostModule;
+
+                    const instance = await injector.loadInstance(wrapper, globalContextId);
+                    instances.push(instance);
+                }
+            }
+            resolvedConfigs.push({ ...config, instances });
+        }
+
+        app.use('*', async (c, next) => {
+            const path = c.req.path;
+            const method = c.req.method;
+
+            const matchingMiddleware: any[] = [];
+
+            for (const config of resolvedConfigs) {
+                if (this.isRouteExcluded(config.excludes, path, method)) continue;
+                if (this.isRouteMatch(config.routes, path, method)) {
+                    matchingMiddleware.push(...config.instances);
+                }
+            }
+
+            if (matchingMiddleware.length === 0) {
+                return await next();
+            }
+
+            const executeChain = async (index: number, finalNext: () => Promise<void>): Promise<void> => {
+                if (index >= matchingMiddleware.length) {
+                    return await finalNext();
+                }
+                const middleware = matchingMiddleware[index];
+
+                return new Promise<void>((resolve, reject) => {
+                    let nextCalled = false;
+                    const nextFn = async () => {
+                        nextCalled = true;
+                        try {
+                            await executeChain(index + 1, finalNext);
+                            resolve();
+                        } catch (e) {
+                            reject(e);
+                        }
+                    };
+
+                    try {
+                        const useFn = middleware.use ? middleware.use.bind(middleware) : middleware;
+                        const result = useFn(c.req, c, nextFn);
+
+                        if (result instanceof Promise) {
+                            result.then(() => {
+                                if (!nextCalled) resolve();
+                            }).catch(reject);
+                        } else {
+                            if (!nextCalled) resolve();
+                        }
+                    } catch (e) {
+                        reject(e);
+                    }
+                });
+            };
+
+            await executeChain(0, next);
+        });
+    }
+
+    private static isRouteMatch(routes: any[], path: string, method: string): boolean {
+        for (const route of routes) {
+            if (typeof route === 'string') {
+                if (route === '*' || path.startsWith(route)) return true;
+                if (path === route) return true;
+            } else if (typeof route === 'object' && route.path && route.method) {
+                // RouteInfo
+                if (route.method !== -1 && route.method !== RequestMethod.ALL && route.method !== method.toLowerCase()) {
+                    continue;
+                }
+                if (route.path === '*' || path === route.path) return true;
+            } else if (typeof route === 'function') {
+                // Controller class
+                const prefix = Reflect.getMetadata(METADATA_KEYS.CONTROLLER, route)?.prefix || '';
+                if (path.startsWith(this.combinePaths(prefix, ''))) return true;
+            }
+        }
+        return false;
+    }
+
+    private static isRouteExcluded(routes: any[], path: string, method: string): boolean {
+        return this.isRouteMatch(routes, path, method);
     }
 
     private static combinePaths(prefix: string, path: string): string {
