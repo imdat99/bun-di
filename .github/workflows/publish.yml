@@ -35,27 +35,32 @@ jobs:
           NEW_VERSION="$BASE_VERSION.${{ github.run_number }}"
           echo "Publishing version: $NEW_VERSION"
 
-          # 2. Iterate over all packages
+          # 2. Update all packages first (to ensure dependencies match)
           for pkg in packages/*; do
             if [ -d "$pkg" ]; then
-              echo "---------------------------------------------------"
-              echo "Processing $pkg..."
-              
-              # Navigate to package directory
+              echo "Updating $pkg..."
               cd $pkg
               
               # Update version in package.json
               jq ".version = \"$NEW_VERSION\"" package.json > package.json.tmp && mv package.json.tmp package.json
               
-              # Replace workspace:* dependencies with the specific new version
-              # This ensures that published packages depend on the specific version of other packages in the monorepo
+              # Replace workspace:* dependencies
               sed -i "s/\"workspace:\*\"/\"$NEW_VERSION\"/g" package.json
               
+              cd ../..
+            fi
+          done
+
+          # 3. Publish all packages
+          for pkg in packages/*; do
+            if [ -d "$pkg" ]; then
+              echo "---------------------------------------------------"
+              echo "Publishing $pkg..."
+              cd $pkg
+              
               # Publish to NPM
-              # --no-git-checks is needed because we modified package.json without committing
               bun publish --access public --no-git-checks
               
-              # Return to root
               cd ../..
             fi
           done
