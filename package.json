@@ -1,22 +1,66 @@
 {
-  "name": "bun-backend",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
-  "devDependencies": {
-    "@types/bun": "latest"
+  "name": "hono-di",
+  "version": "0.0.1",
+  "description": "NestJS-style Dependency Injection for Hono",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/imdat2999/hono-di.git"
   },
+  "keywords": [
+    "hono",
+    "nestjs",
+    "dependency-injection",
+    "di",
+    "ioc",
+    "typescript",
+    "decorators",
+    "hono-framework"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./decorators": {
+      "types": "./dist/decorators.d.ts",
+      "import": "./dist/decorators.js",
+      "require": "./dist/decorators.cjs"
+    },
+    "./core": {
+      "types": "./dist/core.d.ts",
+      "import": "./dist/core.js",
+      "require": "./dist/core.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "reflect-metadata"
+  ],
   "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun"
+    "dev": "tsup --watch",
+    "build": "tsup",
+    "test": "bun test",
+    "prepublishOnly": "bun run build"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "hono": "^4",
+    "rxjs": "^7.8.2"
   },
   "dependencies": {
-    "hono": "^4.11.3",
-    "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2",
-    "zod": "^4.3.5"
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.15.8",
+    "@types/bun": "latest",
+    "tsup": "^8.5.1",
+    "typescript": "^5.4.0"
   }
 }

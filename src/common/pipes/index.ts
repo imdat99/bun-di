@@ -1,7 +1,7 @@
 
-import { PipeTransform, ArgumentMetadata } from '../../core/interfaces';
+import { PipeTransform, ArgumentMetadata } from '../../interfaces';
 import { BadRequestException } from '../exceptions';
-import { Injectable } from '../../core/decorators';
+import { Injectable } from '../../decorators';
 
 @Injectable()
 export class ParseIntPipe implements PipeTransform<string, number> {

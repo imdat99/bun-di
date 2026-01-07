@@ -25,8 +25,8 @@ src/
 
 ## 📚 Tài liệu (Documentation)
 
-- [Core Concepts (English)](./docs/CORE_CONCEPTS.md)
-- [Các Khái Niệm Cốt Lõi (Tiếng Việt)](./docs/CORE_CONCEPTS_VI_VN.md)
+- [Full Documentation (English)](./docs/README.md)
+- [Tài Liệu Hướng Dẫn Đầy Đủ (Tiếng Việt)](./docs/README.vi.md)
 
 ## 🚀 Cài đặt
 
@@ -61,16 +61,45 @@ Server chạy tại `http://localhost:3000`.
 - `/products` - Product management
 - `/example` - Example controller with Error Handling
 
+## 🔧 Features
+
+- **Dependency Injection**: Custom, lightweight IoC container inspired by NestJS.
+- **Modular Architecture**: organize code into Modules, Controllers, and Services.
+- **Global Prefix Support**: easily prefix all routes (e.g., `/api/v1`).
+- **Custom Logger**: NestJS-style logger with timestamps and coloration.
+- **Decorators**: `@Controller`, `@Get`, `@Post`, `@Injectable`, `@Module`, etc.
+
+## 🛠️ Global Prefix Configuration
+
+To set a global prefix (e.g., `/api`), use `{ autoInit: false }` when creating the app:
+
+```typescript
+// src/index.ts
+import { Hono } from 'hono';
+import { HonoDiFactory } from 'hono-di'; // or local path
+
+const honoApp = new Hono();
+// 1. Create app with autoInit: false
+const app = await HonoDiFactory.create(AppModule, { app: honoApp, autoInit: false });
+
+// 2. Set Prefix
+app.setGlobalPrefix('/api/v1');
+
+// 3. Initialize & Listen
+await app.init();
+await app.listen(3000);
+```
+
 ## 🔧 Dependency Injection
 
-Dự án sử dụng **tsyringe** kết hợp với custom decorators (`@Module`, `@Controller`) để quản lý dependencies.
+Dự án sử dụng **Custom IoC Container** (built-in) kết hợp với decorators (`@Module`, `@Controller`) để quản lý dependencies. Không cần thư viện bên thứ 3 như tsyringe.
 
 ## 📦 Dependencies
 
 - **bun** - JavaScript runtime
 - **hono** - Web framework
 - **zod** - Schema validation
-- **tsyringe** - Dependency injection container
+- **rxjs** - Reactive Extensions (used for Interceptors)
 - **reflect-metadata** - Required for decorators
 
 ## 🔒 Environment Variables

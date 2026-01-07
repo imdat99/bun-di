@@ -1,6 +1,6 @@
-import { ExceptionFilter, ArgumentsHost } from '../../core/interfaces';
+import { ExceptionFilter, ArgumentsHost } from '../../interfaces';
 import { HttpException } from '../exceptions/HttpException';
-import { Catch } from '../../core/decorators';
+import { Catch } from '../../decorators';
 
 @Catch()
 export class BaseExceptionFilter implements ExceptionFilter {
