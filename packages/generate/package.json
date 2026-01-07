@@ -1,0 +1,21 @@
+{
+    "name": "@hono-di/generate",
+    "version": "0.0.1",
+    "description": "Code generation API for Hono-DI",
+    "type": "module",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsup",
+        "test": "bun test"
+    },
+    "devDependencies": {
+        "tsup": "^8.5.1",
+        "typescript": "^5.4.0",
+        "@types/node": "^22.10.6"
+    }
+}
