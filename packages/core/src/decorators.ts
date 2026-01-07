@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import { METADATA_KEYS } from './constants';
 import { Scope } from './injector/scope';
 import { RequestMethod } from './interfaces';
-import type { ModuleOptions, Type, InjectionToken, CanActivate, ExceptionFilter, PipeTransform, Interceptor } from './interfaces';
+import type { ModuleOptions, Type, InjectionToken, CanActivate, ExceptionFilter, PipeTransform, Interceptor, ExecutionContext } from './interfaces';
 
 export { Scope, RequestMethod };
 export type { ModuleOptions };
@@ -68,6 +68,11 @@ export const Get = createRouteDecorator(RequestMethod.GET);
 export const Post = createRouteDecorator(RequestMethod.POST);
 export const Put = createRouteDecorator(RequestMethod.PUT);
 export const Delete = createRouteDecorator(RequestMethod.DELETE);
+export const Patch = createRouteDecorator(RequestMethod.PATCH);
+export const Options = createRouteDecorator(RequestMethod.OPTIONS);
+export const Head = createRouteDecorator(RequestMethod.HEAD);
+export const All = createRouteDecorator(RequestMethod.ALL);
+
 // Exception Filters
 export function Catch(...exceptions: Type<any>[]): ClassDecorator {
     return (target: any) => {
@@ -173,6 +178,7 @@ export enum RouteParamtypes {
     HOST,
     IP,
     CONTEXT,
+    CUSTOM,
 }
 
 export function assignMetadata(args: any, paramtype: RouteParamtypes, index: number, data?: any, ...pipes: any[]) {
@@ -294,5 +300,21 @@ export function applyDecorators(...decorators: Array<ClassDecorator | MethodDeco
                 (decorator as PropertyDecorator)(target, propertyKey!);
             }
         }
+    };
+}
+export function createParamDecorator<FactoryData = any, Output = any>(
+    factory: (data: FactoryData, ctx: ExecutionContext) => Output,
+) {
+    const paramtype = RouteParamtypes.CUSTOM;
+    return (data?: FactoryData): ParameterDecorator => {
+        return (target: Object, key: string | symbol | undefined, index: number) => {
+            const args = Reflect.getMetadata(METADATA_KEYS.ROUTE_ARGS_METADATA, target.constructor, key as string | symbol) || {};
+            Reflect.defineMetadata(
+                METADATA_KEYS.ROUTE_ARGS_METADATA,
+                assignMetadata(args, paramtype, index, data, factory),
+                target.constructor,
+                key as string | symbol,
+            );
+        };
     };
 }

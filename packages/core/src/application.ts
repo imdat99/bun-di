@@ -125,7 +125,7 @@ export class HonoDiApplication implements IApplication {
         const routes = Reflect.getMetadata(METADATA_KEYS.ROUTES, controllerClass) as RouteDefinition[];
 
         if (!routes) return;
-        
+
         routes.forEach((route) => {
             const globalPrefix = this.getGlobalPrefix();
             const fullPath = this.combinePaths(globalPrefix, this.combinePaths(prefix, route.path));
@@ -357,6 +357,15 @@ export class HonoDiApplication implements IApplication {
                 case RouteParamtypes.PARAM: value = data ? c.req.param(data) : c.req.param(); break;
                 case RouteParamtypes.HEADERS: value = data ? c.req.header(data) : c.req.header(); break;
                 case RouteParamtypes.IP: value = c.req.header('x-forwarded-for') || '127.0.0.1'; break;
+                case RouteParamtypes.CUSTOM:
+                    const factory = (arg as any).pipes[0]; // Factory is stored as first pipe arg in assignMetadata
+                    // Note: In assignMetadata for CUSTOM, we passed factory as the last argument, which lands in 'pipes' array
+                    // Let's verify how assignMetadata stores it.
+                    // assignMetadata(args, paramtype, index, data, factory) -> factory is in ...pipes
+                    if (typeof factory === 'function') {
+                        value = factory(data, context);
+                    }
+                    break;
                 default: value = null;
             }
 
@@ -382,18 +391,18 @@ export class HonoDiApplication implements IApplication {
     }
 
     private async initializeMiddleware() {
-        const builder = new MiddlewareBuilder();
+        const configs: any[] = [];
         const modules = this.container.getModules();
 
         for (const module of modules.values()) {
             const moduleClass = module.metatype;
             const wrapper = module.getProvider(moduleClass);
             if (wrapper && wrapper.instance && (wrapper.instance as any).configure) {
+                const builder = new MiddlewareBuilder(module);
                 (wrapper.instance as any).configure(builder);
+                configs.push(...builder.getConfigs());
             }
         }
-
-        const configs = builder.getConfigs();
         if (configs.length === 0) return;
 
         const resolvedConfigs: any[] = [];
@@ -413,7 +422,7 @@ export class HonoDiApplication implements IApplication {
                     });
                     const scanner = new HonoDiScanner(this.container);
                     scanner.scanDependencies(wrapper);
-                    const hostModule = modules.values().next().value;
+                    const hostModule = config.module || modules.values().next().value;
                     wrapper.host = hostModule;
 
                     const instance = await this.injector.loadInstance(wrapper, globalContextId);
@@ -482,8 +491,9 @@ export class HonoDiApplication implements IApplication {
     private isRouteMatch(routes: any[], path: string, method: string): boolean {
         for (const route of routes) {
             if (typeof route === 'string') {
-                if (route === '*' || path.startsWith(route)) return true;
-                if (path === route) return true;
+                const normalizedRoute = route === '*' ? '*' : (route.startsWith('/') ? route : `/${route}`);
+                if (normalizedRoute === '*' || path.startsWith(normalizedRoute)) return true;
+                if (path === normalizedRoute) return true;
             } else if (typeof route === 'object' && route.path && route.method) {
                 if (route.method !== -1 && route.method !== RequestMethod.ALL && route.method !== method.toLowerCase()) {
                     continue;
@@ -535,5 +545,9 @@ export class HonoDiApplication implements IApplication {
     public getGlobalPipes() { return this.globalPipes; }
     public getGlobalGuards() { return this.globalGuards; }
     public getGlobalInterceptors() { return this.globalInterceptors; }
+
+    public getContainer(): Container {
+        return this.container;
+    }
 }
 

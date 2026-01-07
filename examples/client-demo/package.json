@@ -1,0 +1,14 @@
+{
+    "name": "client-demo",
+    "version": "0.0.1",
+    "private": true,
+    "scripts": {
+        "start": "bun run index.ts",
+        "gen": "bun run ../../packages/cli/src/index.ts client --output client.d.ts --project tsconfig.json"
+    },
+    "dependencies": {
+        "@hono-di/core": "workspace:*",
+        "hono": "^4",
+        "reflect-metadata": "^0.2.2"
+    }
+}

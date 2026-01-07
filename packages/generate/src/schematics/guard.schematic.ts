@@ -1,7 +1,7 @@
 import { toPascalCase } from '../utils/name.utils';
 
 export function generateGuard(name: string) {
-    return `import { CanActivate, Injectable, ExecutionContext } from 'hono-di';
+    return `import { CanActivate, Injectable, ExecutionContext } from '@hono-di/core';
 import { Observable } from 'rxjs';
 
 @Injectable()

@@ -33,7 +33,7 @@ export interface ArgumentsHost {
 
 export interface HttpArgumentsHost {
     getRequest<T extends string = any>(): HonoRequest<T, any>;
-    getResponse<T = any>(): Response;
+    getResponse<T = any>(): Context;
     getNext<T = any>(): Next;
     getContext(): Context; // Hono Context
 }
@@ -89,7 +89,7 @@ export interface OnApplicationShutdown {
     onApplicationShutdown(signal?: string): any;
 }
 
-export type InjectionToken<T = any> = string | symbol | Type<T> | Function;
+export type InjectionToken<T = any> = string | symbol | Type<T> | Function | ForwardReference;
 
 export type Provider<T = any> =
     | Type<any>

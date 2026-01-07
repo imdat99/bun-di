@@ -12,3 +12,5 @@ export * from './common/pipes';
 export * from './common/errors/AppError';
 export * from './common/interfaces/ILogger';
 export * from './common/filters/BaseExceptionFilter';
+export * from './injector/container';
+export { METADATA_KEYS } from './constants';

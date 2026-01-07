@@ -14,7 +14,9 @@
         "test": "bun test"
     },
     "dependencies": {
-        "@hono-di/generate": "workspace:*"
+        "@hono-di/core": "workspace:*",
+        "@hono-di/generate": "workspace:*",
+        "@hono-di/client": "workspace:*"
     },
     "devDependencies": {
         "tsup": "^8.5.1",

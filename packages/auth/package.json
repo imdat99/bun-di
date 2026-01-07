@@ -1,7 +1,7 @@
 {
-    "name": "@hono-di/core",
+    "name": "@hono-di/auth",
     "version": "0.0.1",
-    "description": "NestJS-style Dependency Injection for Hono",
+    "description": "Authentication utilities for HonoDi",
     "type": "module",
     "main": "./dist/index.cjs",
     "module": "./dist/index.js",
@@ -11,11 +11,6 @@
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
             "require": "./dist/index.cjs"
-        },
-        "./decorators": {
-            "types": "./dist/decorators.d.ts",
-            "import": "./dist/decorators.js",
-            "require": "./dist/decorators.cjs"
         }
     },
     "files": [
@@ -25,15 +20,13 @@
         "build": "tsup",
         "test": "bun test"
     },
-    "dependencies": {
-        "reflect-metadata": "^0.2.2"
-    },
+    "dependencies": {},
     "peerDependencies": {
-        "hono": "^4",
-        "rxjs": "^7.8.2"
+        "@hono-di/core": "workspace:*",
+        "hono": "^4"
     },
     "devDependencies": {
-        "tsup": "^8.5.1",
-        "typescript": "^5.4.0"
+        "tsup": "^8.0.2",
+        "typescript": "^5.4.2"
     }
 }

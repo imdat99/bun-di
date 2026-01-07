@@ -1,0 +1,14 @@
+{
+    "name": "swagger-demo",
+    "version": "0.0.1",
+    "private": true,
+    "scripts": {
+        "start": "bun run index.ts"
+    },
+    "dependencies": {
+        "@hono-di/core": "workspace:*",
+        "@hono-di/swagger": "workspace:*",
+        "hono": "^4",
+        "reflect-metadata": "^0.2.2"
+    }
+}

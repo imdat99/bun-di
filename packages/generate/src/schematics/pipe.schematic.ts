@@ -1,7 +1,7 @@
 import { toPascalCase } from '../utils/name.utils';
 
 export function generatePipe(name: string) {
-    return `import { PipeTransform, Injectable, ArgumentMetadata } from 'hono-di';
+    return `import { PipeTransform, Injectable, ArgumentMetadata } from '@hono-di/core';
 
 @Injectable()
 export class ${toPascalCase(name)}Pipe implements PipeTransform {

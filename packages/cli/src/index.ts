@@ -44,8 +44,13 @@ async function main() {
     let name = args[2];
     let optionsStartIndex = 3;
 
+    if (command === 'client') {
+        await handleClientCommand(args);
+        return;
+    }
+
     if (command !== 'g' && command !== 'generate') {
-        console.error('Invalid command. Use "g" or "generate".');
+        console.error('Invalid command. Use "g", "generate", or "client".');
         process.exit(1);
     }
 
@@ -149,6 +154,33 @@ async function main() {
                 console.log(`SKIP ${relativePath}`);
             }
         }
+    }
+}
+
+async function handleClientCommand(args: string[]) {
+    const { TypeGenerator } = await import('@hono-di/client');
+
+    const outputIndex = args.indexOf('--output');
+    const outputPath = outputIndex !== -1 ? args[outputIndex + 1] : 'client.d.ts';
+
+    const projectIndex = args.indexOf('--project');
+    const projectPath = projectIndex !== -1 ? args[projectIndex + 1] : 'tsconfig.json';
+
+    console.log(`Generating client types...`);
+    console.log(`Project: ${projectPath}`);
+    console.log(`Output: ${outputPath}`);
+
+    try {
+        const generator = new TypeGenerator({
+            tsConfigFilePath: path.resolve(process.cwd(), projectPath),
+        });
+
+        const content = await generator.generate();
+        fs.writeFileSync(path.resolve(process.cwd(), outputPath), content);
+        console.log(`Successfully generated client types at ${outputPath}`);
+    } catch (error: any) {
+        console.error('Failed to generate client types:', error.message);
+        process.exit(1);
     }
 }
 

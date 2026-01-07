@@ -1,7 +1,7 @@
 {
-    "name": "@hono-di/core",
+    "name": "@hono-di/client",
     "version": "0.0.1",
-    "description": "NestJS-style Dependency Injection for Hono",
+    "description": "Type-safe client generator for Hono-DI",
     "type": "module",
     "main": "./dist/index.cjs",
     "module": "./dist/index.js",
@@ -11,11 +11,6 @@
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
             "require": "./dist/index.cjs"
-        },
-        "./decorators": {
-            "types": "./dist/decorators.d.ts",
-            "import": "./dist/decorators.js",
-            "require": "./dist/decorators.cjs"
         }
     },
     "files": [
@@ -26,14 +21,12 @@
         "test": "bun test"
     },
     "dependencies": {
-        "reflect-metadata": "^0.2.2"
-    },
-    "peerDependencies": {
-        "hono": "^4",
-        "rxjs": "^7.8.2"
+        "ts-morph": "^21.0.1",
+        "glob": "^10.3.10"
     },
     "devDependencies": {
         "tsup": "^8.5.1",
-        "typescript": "^5.4.0"
+        "typescript": "^5.4.0",
+        "@types/node": "^22.10.6"
     }
 }

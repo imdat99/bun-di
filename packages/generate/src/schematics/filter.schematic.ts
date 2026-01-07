@@ -1,7 +1,7 @@
 import { toPascalCase } from '../utils/name.utils';
 
 export function generateFilter(name: string) {
-    return `import { ArgumentsHost, Catch, ExceptionFilter } from 'hono-di';
+    return `import { ArgumentsHost, Catch, ExceptionFilter } from '@hono-di/core';
 
 @Catch()
 export class ${toPascalCase(name)}Filter<T> implements ExceptionFilter {

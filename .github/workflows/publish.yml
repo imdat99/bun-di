@@ -28,22 +28,36 @@ jobs:
       - name: Run tests
         run: bun test
       
-      - name: Update version with Bash
+      - name: Publish all packages
         run: |
-          # 1. Trích xuất phần Major.Minor bằng jq và cut
-          # Ví dụ: "0.0.1" -> "0.0"
+          # 1. Determine new version based on root package.json
           BASE_VERSION=$(jq -r '.version' package.json | cut -d. -f1,2)
-
-          # 2. Tạo version mới với GitHub Run Number
           NEW_VERSION="$BASE_VERSION.${{ github.run_number }}"
+          echo "Publishing version: $NEW_VERSION"
 
-          # 3. Ghi đè version mới vào package.json bằng jq
-          # Sử dụng tệp tạm thời vì jq không ghi đè trực tiếp lên file đang đọc
-          jq ".version = \"$NEW_VERSION\"" package.json > package.json.tmp && mv package.json.tmp package.json
-          
-          echo "Updated version to: $NEW_VERSION"
-
-      - name: Publish to NPM
-        run: bun publish --access public
+          # 2. Iterate over all packages
+          for pkg in packages/*; do
+            if [ -d "$pkg" ]; then
+              echo "---------------------------------------------------"
+              echo "Processing $pkg..."
+              
+              # Navigate to package directory
+              cd $pkg
+              
+              # Update version in package.json
+              jq ".version = \"$NEW_VERSION\"" package.json > package.json.tmp && mv package.json.tmp package.json
+              
+              # Replace workspace:* dependencies with the specific new version
+              # This ensures that published packages depend on the specific version of other packages in the monorepo
+              sed -i "s/\"workspace:\*\"/\"$NEW_VERSION\"/g" package.json
+              
+              # Publish to NPM
+              # --no-git-checks is needed because we modified package.json without committing
+              bun publish --access public --no-git-checks
+              
+              # Return to root
+              cd ../..
+            fi
+          done
         env:
           NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}

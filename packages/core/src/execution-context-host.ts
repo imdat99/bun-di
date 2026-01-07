@@ -36,7 +36,7 @@ export class ExecutionContextHost implements ExecutionContext {
     switchToHttp(): HttpArgumentsHost {
         return {
             getRequest: () => this.context.req,
-            getResponse: () => this.context.res,
+            getResponse: () => this.context,
             getNext: () => this.next ?? (() => Promise.resolve()),
             getContext: () => this.context,
         };
