@@ -1,7 +1,7 @@
-import { Injectable } from 'hono-di';
+import { Injectable } from '@hono-di/core';
 import { ProductRepository } from '../repositories/ProductRepository';
 import { Product, CreateProductDto, UpdateProductDto } from '../models/Product';
-import { NotFoundError, BadRequestError } from 'hono-di';
+import { NotFoundError, BadRequestError } from '@hono-di/core';
 import { LoggerService } from './LoggerService';
 
 @Injectable()

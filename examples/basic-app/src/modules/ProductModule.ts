@@ -1,4 +1,4 @@
-import { Module } from 'hono-di';
+import { Module } from '@hono-di/core';
 import { ProductController } from '../controllers/ProductController';
 import { ProductService } from '../services/ProductService';
 import { LoggerService } from '../services/LoggerService';

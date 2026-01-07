@@ -1,4 +1,4 @@
-import { Module } from 'hono-di';
+import { Module } from '@hono-di/core';
 import { UserController } from '../controllers/UserController';
 import { UserService } from '../services/UserService';
 import { LoggerService } from '../services/LoggerService';

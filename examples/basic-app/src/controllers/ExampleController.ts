@@ -1,8 +1,8 @@
 import type { Context } from 'hono';
-import { Controller, Get, UseFilters, Catch } from 'hono-di';
-import { BadRequestException } from 'hono-di';
-import { BaseExceptionFilter } from 'hono-di';
-import { ExceptionFilter, ArgumentsHost } from 'hono-di';
+import { Controller, Get, UseFilters, Catch } from '@hono-di/core';
+import { BadRequestException } from '@hono-di/core';
+import { BaseExceptionFilter } from '@hono-di/core';
+import { ExceptionFilter, ArgumentsHost } from '@hono-di/core';
 
 @Catch(BadRequestException)
 class BadRequestFilter implements ExceptionFilter {

@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { env } from './config/env';
-import { HonoDiFactory } from 'hono-di';
+import { HonoDiFactory } from '@hono-di/core';
 import { AppModule } from './AppModule';
 import { showRoutes } from 'hono/dev';
 

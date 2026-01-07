@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { Controller, Get } from 'hono-di';
+import { Controller, Get } from '@hono-di/core';
 
 @Controller('health')
 export class HealthController {

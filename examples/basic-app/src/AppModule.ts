@@ -1,4 +1,4 @@
-import { Module } from 'hono-di';
+import { Module } from '@hono-di/core';
 import { HealthController } from './controllers/HealthController';
 import { UserModule } from './modules/UserModule';
 import { ProductModule } from './modules/ProductModule';

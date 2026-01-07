@@ -1,6 +1,6 @@
 import { IRepository } from './IRepository';
 import { Product, CreateProductDto } from '../models/Product';
-import { Injectable } from 'hono-di';
+import { Injectable } from '@hono-di/core';
 
 @Injectable()
 export class ProductRepository implements IRepository<Product> {

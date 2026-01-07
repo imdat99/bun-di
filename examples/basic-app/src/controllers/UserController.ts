@@ -1,5 +1,5 @@
 import type { Context } from 'hono';
-import { Controller, Get, Post, Put, Delete } from 'hono-di';
+import { Controller, Get, Post, Put, Delete } from '@hono-di/core';
 import { UserService } from '../services/UserService';
 
 @Controller('users')

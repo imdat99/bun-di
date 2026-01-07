@@ -1,5 +1,5 @@
-import { ILogger } from 'hono-di';
-import { Injectable } from 'hono-di';
+import { ILogger } from '@hono-di/core';
+import { Injectable } from '@hono-di/core';
 
 @Injectable()
 export class LoggerService implements ILogger {
