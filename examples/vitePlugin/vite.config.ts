@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite'
-import honoDiVite from '../../packages/vite/src/index'
+import honoDiVite from '../../packages/vite/dist'
 // import honoDi from '../../packages/vite/src/index'
 
 // https://vite.dev/config/

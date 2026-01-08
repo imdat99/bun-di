@@ -18,6 +18,7 @@
   ],
   "scripts": {
     "build": "tsup && bun run client:build",
+    "client:build": "cd client && bun run build",
     "dev": "tsup --watch",
     "test": "bun test"
   },

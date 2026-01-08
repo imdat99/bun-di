@@ -7,4 +7,5 @@ export default defineConfig({
   clean: false,
   shims: true,
   external: ['vite', 'sirv'],
+
 });
