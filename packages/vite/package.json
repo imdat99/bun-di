@@ -19,12 +19,10 @@
   "scripts": {
     "build": "tsup && bun run client:build",
     "dev": "tsup --watch",
-    "client:dev": "vite client",
-    "client:build": "vite build client --outDir dist/client --emptyOutDir",
     "test": "bun test"
   },
   "peerDependencies": {
-    "vite": "^5.0.0"
+    "vite": "^7.0.0"
   },
   "dependencies": {
     "@hono-di/generate": "workspace:*",
@@ -35,9 +33,6 @@
     "tsup": "^8.0.0",
     "typescript": "^5.4.0",
     "@types/node": "^20.0.0",
-    "vite": "^5.2.0",
-    "@vitejs/plugin-vue": "^5.0.0",
-    "vue": "^3.4.0",
-    "vue-tsc": "^2.0.0"
+    "vite": "^7.3.0"
   }
 }

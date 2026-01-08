@@ -12,7 +12,7 @@ export type GenerateType =
     | 'decorator';
 
 export interface GenerateInput {
-    type: GenerateType;
+    type: GenerateType | GenerateType[];
     name: string;
     path?: string;
     flat?: boolean;

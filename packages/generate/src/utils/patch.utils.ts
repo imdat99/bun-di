@@ -23,12 +23,11 @@ export function findNearestModule(dir: string, rootDir: string = process.cwd()):
 }
 
 export function patchModule(
-    modulePath: string,
+    content: string,
     className: string,
     importPath: string,
     type: 'controller' | 'provider' | 'import'
 ): string | null {
-    const content = fs.readFileSync(modulePath, 'utf-8');
     let newContent = content;
 
     // 1. Add Import
