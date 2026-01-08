@@ -2,7 +2,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { generate, GenerateInput, GenerateType } from '@hono-di/generate';
-import { writeFile } from '@hono-di/generate/utils/fs.utils';
 
 // Wait, I can't import internals of another package easily unless exported.
 // I should export utils from @hono-di/generate if CLI needs them, or copy them.

@@ -33,6 +33,7 @@
         "rxjs": "^7.8.2"
     },
     "devDependencies": {
+        "@swc/core": "^1.15.8",
         "tsup": "^8.5.1",
         "typescript": "^5.4.0"
     }

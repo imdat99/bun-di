@@ -1,0 +1,43 @@
+{
+  "name": "@hono-di/vite",
+  "version": "0.0.1",
+  "description": "Vite plugin for Hono-DI development",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup && bun run client:build",
+    "dev": "tsup --watch",
+    "client:dev": "vite client",
+    "client:build": "vite build client --outDir dist/client --emptyOutDir",
+    "test": "bun test"
+  },
+  "peerDependencies": {
+    "vite": "^5.0.0"
+  },
+  "dependencies": {
+    "@hono-di/generate": "workspace:*",
+    "@hono-di/client": "workspace:*",
+    "sirv": "^2.0.4"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0",
+    "vite": "^5.2.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vue": "^3.4.0",
+    "vue-tsc": "^2.0.0"
+  }
+}
