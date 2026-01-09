@@ -1,9 +1,8 @@
 export class ContextId {
-    private static idCounter = 0;
-    public readonly id: number;
+    public readonly id: string;
 
     constructor() {
-        this.id = ContextId.idCounter++;
+        this.id = crypto.randomUUID();
     }
 }
 

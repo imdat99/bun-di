@@ -167,5 +167,25 @@ export interface IApplication {
     getHttpAdapter(): Hono;
     get<TInput = any, TResult = TInput>(typeOrToken: Type<TInput> | string | symbol, options?: { strict?: boolean }): TResult;
     close(): Promise<void>;
+    getContainer(): any;
+}
+
+// Type safety improvements
+export interface RouteMetadataCache {
+    guards: CanActivate[];
+    interceptors: Interceptor[];
+    pipes: PipeTransform[];
+}
+
+export interface ModuleRef {
+    getProvider(token: any): any;
+    controllers: Map<any, any>;
+    metatype: Type<any>;
+    providers: Map<any, any>;
+    imports: Set<any>;
+}
+
+export interface CleanupHandler {
+    cleanup(): Promise<void> | void;
 }
 

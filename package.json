@@ -4,8 +4,7 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "packages/vite/client",
-    "examples/*"
+    "packages/vite/client"
   ],
   "scripts": {
     "build": "bun run --filter @hono-di/core build && bun run --filter '*' --filter '!@hono-di/core' build",

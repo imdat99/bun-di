@@ -19,13 +19,13 @@ export class Injector {
         inquire: InstanceWrapper[] = [],
         parentInquire: InstanceWrapper[] = []
     ) {
-        // Check circular dependencies
-        // If wrapper is already in inquire, we have a circular dependency
-        if (inquire.some((item) => item === wrapper) && wrapper.scope === Scope.DEFAULT) {
-            // This is a simplified check. Real HonoDi has complex handling for forwardRef.
-            // For now, valid cyclic dependency detection in instantiation graph.
-            throw new Error(`Circular dependency detected: ${wrapper.name}`);
+        // Check circular dependencies for ALL scopes
+        if (inquire.some((item) => item === wrapper)) {
+            // Build dependency chain for better error message
+            const chain = [...inquire, wrapper].map(w => w.name || 'Unknown').join(' -> ');
+            throw new Error(`Circular dependency detected: ${chain}`);
         }
+
 
         const args: any[] = [];
 
@@ -203,7 +203,14 @@ export class Injector {
 
         // Resolve Property Dependencies
         if (wrapper.properties) {
+            const UNSAFE_KEYS = ['__proto__', 'constructor', 'prototype'];
             for (const prop of wrapper.properties) {
+                // Security: Prevent prototype pollution
+                const keyStr = String(prop.key);
+                if (UNSAFE_KEYS.includes(keyStr)) {
+                    throw new Error(`Unsafe property injection detected: ${keyStr}`);
+                }
+
                 const propInstance = await this.resolveSingleParam(
                     prop.token,
                     wrapper.host!,
@@ -216,6 +223,7 @@ export class Injector {
                 }
             }
         }
+
 
         // Cache instance
         if (wrapper.scope === Scope.DEFAULT) {

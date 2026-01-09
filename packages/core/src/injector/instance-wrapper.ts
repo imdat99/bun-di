@@ -67,4 +67,14 @@ export class InstanceWrapper<T = any> {
         }
         this.inject[index] = token;
     }
+
+    public cleanup(contextId?: ContextId) {
+        if (contextId) {
+            // Cleanup specific context
+            this.instancesPerContext.delete(contextId);
+        } else {
+            // Cleanup all request-scoped instances
+            this.instancesPerContext.clear();
+        }
+    }
 }
