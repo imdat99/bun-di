@@ -1,9 +1,8 @@
 
-import { useState, useEffect } from 'preact/hooks';
-import { ChevronRight, File, Folder } from 'lucide-preact';
-import clsx from 'clsx';
+import { useState, useMemo } from 'preact/hooks';
+import { Tree, Modal, Form, Toast } from '@douyinfe/semi-ui';
 import { callApi } from '../api';
-import Swal from 'sweetalert2';
+import { File as FileIcon, Folder } from 'lucide-preact';
 import { ContextMenu } from './ContextMenu';
 
 interface TreeNode {
@@ -17,47 +16,65 @@ interface FileTreeProps {
     tree: TreeNode | null;
     onRefresh: () => void;
     onGenerate: (path: string) => void;
+    onSelect?: (node: TreeNode) => void;
     searchQuery: string;
 }
 
-export function FileTree({ tree, onRefresh, onGenerate, searchQuery }: FileTreeProps) {
-    const [expanded, setExpanded] = useState<Set<string>>(new Set(['']));
-    const [selected, setSelected] = useState<string | null>(null);
-    const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: TreeNode } | null>(null);
+export function FileTree({ tree, onRefresh, onGenerate, onSelect, searchQuery }: FileTreeProps) {
+    const [contextMenuPos, setContextMenuPos] = useState<{ x: number, y: number, node: TreeNode } | null>(null);
+    const [modalState, setModalState] = useState<{
+        visible: boolean;
+        title: string;
+        type: 'input';
+        initialValue?: string;
+        label?: string;
+        placeholder?: string;
+        onOk: (val: string) => Promise<void>;
+    } | null>(null);
 
-    // Expand nodes when searching
-    useEffect(() => {
-        if (searchQuery && tree) {
-            const newExpanded = new Set(expanded);
-            const expandMatch = (node: TreeNode) => {
-                if (filterTree(node, searchQuery)) {
-                    if (node.type === 'dir') newExpanded.add(node.path);
-                    node.children?.forEach(expandMatch);
-                }
-            };
-            expandMatch(tree);
-            setExpanded(newExpanded);
-        }
-    }, [searchQuery, tree]);
+    const filteredTree = useMemo(() => {
+        if (!tree) return null;
 
+        const filterNode = (node: TreeNode): TreeNode | null => {
+            if (!searchQuery) return node;
+            const matchesSelf = node.name.toLowerCase().includes(searchQuery.toLowerCase());
+            if (node.type === 'file') return matchesSelf ? node : null;
 
-    const toggle = (path: string) => {
-        const next = new Set(expanded);
-        if (next.has(path)) next.delete(path); else next.add(path);
-        setExpanded(next);
-    };
+            const filteredChildren = (node.children || [])
+                .map(filterNode)
+                .filter((c): c is TreeNode => c !== null);
+
+            if (matchesSelf || filteredChildren.length > 0) {
+                return { ...node, children: filteredChildren };
+            }
+            return null;
+        };
+
+        return filterNode(tree);
+    }, [tree, searchQuery]);
+
+    const treeData = useMemo(() => {
+        if (!filteredTree) return [];
+        const mapNode = (node: TreeNode): any => ({
+            key: node.path,
+            label: node.name,
+            icon: node.type === 'dir' ? <Folder size={16} /> : <FileIcon size={16} />,
+            children: node.children ? node.children.map(mapNode) : undefined,
+            data: node
+        });
+        return [mapNode(filteredTree)];
+    }, [filteredTree]);
 
     const handleContextMenu = (e: MouseEvent, node: TreeNode) => {
         e.preventDefault();
         e.stopPropagation();
-        setSelected(node.path);
-        setContextMenu({ x: e.clientX, y: e.clientY, node });
+        setContextMenuPos({ x: e.clientX, y: e.clientY, node });
     };
 
     const handleAction = (action: string) => {
-        if (!contextMenu) return;
-        const { node } = contextMenu;
-        setContextMenu(null);
+        if (!contextMenuPos) return;
+        const { node } = contextMenuPos;
+        setContextMenuPos(null);
 
         if (action === 'generate') {
             onGenerate(node.path);
@@ -72,131 +89,119 @@ export function FileTree({ tree, onRefresh, onGenerate, searchQuery }: FileTreeP
         }
     };
 
-    const promptCreate = async (node: TreeNode, type: 'file' | 'dir') => {
+    const promptCreate = (node: TreeNode, type: 'file' | 'dir') => {
         const isDir = type === 'dir';
-        // if context node is file, use parent dir
         const base = node.type === 'dir' ? node.path : node.path.split('/').slice(0, -1).join('/');
 
-        const { value: name } = await Swal.fire({
+        setModalState({
+            visible: true,
+            type: 'input',
             title: isDir ? 'New Folder' : 'New File',
-            input: 'text',
-            inputLabel: `Inside: /${base}`,
-            inputPlaceholder: isDir ? 'folder_name' : 'file.ts',
-            showCancelButton: true,
-            background: '#1f1f23', color: '#fff'
+            label: `Inside: /${base}`,
+            placeholder: isDir ? 'folder_name' : 'file.ts',
+            onOk: async (name) => {
+                if (!name) return;
+                const fullPath = base ? `${base}/${name}` : name;
+                try {
+                    await callApi(isDir ? 'dir/create' : 'file/create', { path: fullPath });
+                    onRefresh();
+                } catch (e: any) { Toast.error(e.message); }
+            }
         });
-
-        if (name) {
-            const fullPath = base ? `${base}/${name}` : name;
-            try {
-                await callApi(isDir ? 'dir/create' : 'file/create', { path: fullPath });
-                onRefresh();
-            } catch (e: any) { Swal.fire({ title: 'Error', text: e.message, icon: 'error', background: '#1f1f23', color: '#fff' }); }
-        }
     };
 
-    const promptRename = async (node: TreeNode) => {
-        const { value: newName } = await Swal.fire({
+    const promptRename = (node: TreeNode) => {
+        setModalState({
+            visible: true,
+            type: 'input',
             title: 'Rename',
-            input: 'text',
-            inputValue: node.name,
-            showCancelButton: true,
-            background: '#1f1f23', color: '#fff'
+            initialValue: node.name,
+            onOk: async (newName) => {
+                if (!newName || newName === node.name) return;
+                try {
+                    const oldPath = node.path;
+                    const base = oldPath.split('/').slice(0, -1).join('/');
+                    const newPath = base ? `${base}/${newName}` : newName;
+                    await callApi('move', { from: oldPath, to: newPath });
+                    onRefresh();
+                } catch (e: any) { Toast.error(e.message); }
+            }
         });
-
-        if (newName && newName !== node.name) {
-            try {
-                const oldPath = node.path;
-                const base = oldPath.split('/').slice(0, -1).join('/');
-                const newPath = base ? `${base}/${newName}` : newName;
-                await callApi('move', { from: oldPath, to: newPath });
-                onRefresh();
-            } catch (e: any) { Swal.fire({ title: 'Error', text: e.message, icon: 'error', background: '#1f1f23', color: '#fff' }); }
-        }
     };
 
-    const confirmDelete = async (node: TreeNode) => {
-        const { isConfirmed } = await Swal.fire({
+    const confirmDelete = (node: TreeNode) => {
+        Modal.confirm({
             title: `Delete ${node.name}?`,
-            text: 'This action cannot be undone',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#ef4444',
-            background: '#1f1f23',
-            color: '#fff'
+            content: 'This action cannot be undone.',
+            onOk: async () => {
+                try {
+                    await callApi('delete', { path: node.path });
+                    onRefresh();
+                } catch (e: any) { Toast.error(e.message); }
+            },
+            okButtonProps: { type: 'danger' }
         });
-
-        if (isConfirmed) {
-            await callApi('delete', { path: node.path });
-            onRefresh();
-        }
     };
-
-    // Recursive renderer
-    const renderNode = (node: TreeNode, depth = 0) => {
-        const isDir = node.type === 'dir';
-        const isExpanded = expanded.has(node.path);
-        const isSelected = selected === node.path;
-
-        return (
-            <li key={node.path}>
-                <div
-                    className={clsx(
-                        "flex items-center px-4 min-h-[26px] cursor-pointer border-l-2 border-transparent transition-colors relative group",
-                        isSelected ? "bg-[#2e2e32] border-l-accent" : "hover:bg-[#27272a]"
-                    )}
-                    style={{ paddingLeft: 16 + depth * 14 }}
-                    onClick={() => { setSelected(node.path); if (isDir) toggle(node.path); }}
-                    onContextMenu={(e) => handleContextMenu(e, node)}
-                >
-                    {isDir ? (
-                        <>
-                            <ChevronRight size={14} class={clsx("text-neutral-400/70 mr-0.5 transition-transform", isExpanded && "rotate-90")} />
-                            <Folder size={16} class="text-yellow-500 fill-yellow-500/20" />
-                        </>
-                    ) : (
-                        <>
-                            <div style={{ width: 14, display: 'inline-block' }}></div>
-                            <File size={16} class="text-blue-400" />
-                        </>
-                    )}
-                    <span class="ml-2 font-mono text-[12.5px] font-normal text-neutral-300">{node.name}</span>
-                </div>
-                {isDir && isExpanded && node.children && (
-                    <ul>{node.children.map(c => renderNode(c, depth + 1))}</ul>
-                )}
-            </li>
-        );
-    };
-
-    const filterTree = (node: TreeNode, query: string): TreeNode | null => {
-        if (!query) return node;
-        const matchesSelf = node.name.toLowerCase().includes(query.toLowerCase());
-        if (node.type === 'file') return matchesSelf ? node : null;
-
-        const filteredChildren = (node.children || [])
-            .map(c => filterTree(c, query))
-            .filter((c): c is TreeNode => c !== null);
-
-        if (matchesSelf || filteredChildren.length > 0) {
-            return { ...node, children: filteredChildren };
-        }
-        return null;
-    };
-
-    const treeToRender = tree ? filterTree(tree, searchQuery) : null;
 
     return (
-        <div class="h-full" onClick={() => setContextMenu(null)}>
-            <ul class="py-2">{treeToRender && renderNode(treeToRender)}</ul>
-            {contextMenu && (
+        <div style={{ height: '100%' }} onContextMenu={(e) => e.preventDefault()} onClick={() => setContextMenuPos(null)}>
+            <Tree
+                treeData={treeData}
+                defaultExpandAll
+                renderLabel={(label, data: any) => (
+                    <div
+                        onContextMenu={(e) => handleContextMenu(e, data.data)}
+                        onClick={() => {
+                            if (data.data.type === 'file' && onSelect) {
+                                onSelect(data.data);
+                            }
+                        }}
+                        style={{ flex: 1, cursor: 'pointer' }}
+                    >
+                        {label}
+                    </div>
+                )}
+            />
+
+            {contextMenuPos && (
                 <ContextMenu
-                    x={contextMenu.x}
-                    y={contextMenu.y}
-                    onClose={() => setContextMenu(null)}
+                    x={contextMenuPos.x}
+                    y={contextMenuPos.y}
+                    onClose={() => setContextMenuPos(null)}
                     onAction={handleAction}
                 />
             )}
+
+            {/* Reusable Input Modal */}
+            <Modal
+                title={modalState?.title}
+                visible={modalState?.visible}
+                onCancel={() => setModalState(null)}
+                // destroyOnClose not supported in this version/binding
+                onOk={() => {
+                    const form = document.getElementById('file-tree-form') as HTMLFormElement;
+                    if (form) form.requestSubmit();
+                }}
+            >
+                {modalState && (
+                    <Form
+                        id="file-tree-form"
+                        initValues={{ value: modalState.initialValue || '' }}
+                        onSubmit={async (values) => {
+                            await modalState.onOk(values.value);
+                            setModalState(null);
+                        }}
+                    >
+                        <Form.Input
+                            field='value'
+                            label={modalState.label}
+                            placeholder={modalState.placeholder}
+                            autofocus
+                            rules={[{ required: true, message: 'This field is required' }]}
+                        />
+                    </Form>
+                )}
+            </Modal>
         </div>
     );
 }

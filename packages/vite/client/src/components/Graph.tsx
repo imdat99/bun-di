@@ -1,12 +1,15 @@
-
 import { useEffect, useRef } from 'preact/hooks';
 import { callApi } from '../api';
 import { Network } from 'vis-network';
 import { DataSet } from 'vis-data';
+import { Button, Layout } from '@douyinfe/semi-ui';
+import { RefreshCcw } from 'lucide-preact';
+
+const { Header, Content } = Layout;
 
 export function Graph() {
     const containerRef = useRef<HTMLDivElement>(null);
-    const networkRef = useRef<Network | null>(null);
+    const networkRef = useRef<any>(null);
 
     useEffect(() => {
         loadGraph();
@@ -23,17 +26,17 @@ export function Graph() {
             const options = {
                 nodes: {
                     shape: 'dot', size: 16,
-                    font: { color: '#ffffff', face: 'Inter' },
+                    font: { color: 'var(--semi-color-text-0)', face: 'Inter' },
                     borderWidth: 2,
-                    color: { background: '#202020', border: '#6366f1', highlight: { background: '#6366f1', border: '#fff' } }
+                    color: { background: 'var(--semi-color-bg-0)', border: 'var(--semi-color-primary)', highlight: { background: 'var(--semi-color-primary)', border: '#fff' } }
                 },
                 edges: {
-                    width: 1, color: { color: '#444', highlight: '#6366f1' },
+                    width: 1, color: { color: 'var(--semi-color-text-2)', highlight: 'var(--semi-color-primary)' },
                     arrows: 'to', smooth: { type: 'continuous' }
                 },
                 physics: {
                     stabilization: false,
-                    barnesHut: { gravitationalConstant: -2000, springCreate: 0.005 }
+                    barnesHut: { gravitationalConstant: -2000, springLength: 0.005 }
                 },
                 layout: { randomSeed: 2 }
             };
@@ -43,20 +46,20 @@ export function Graph() {
     }
 
     return (
-        <div class="flex flex-col w-full h-full text-white">
-            <header class="bg-header backdrop-blur-md px-5 h-[52px] flex items-center justify-between border-b border-border z-10">
-                <div class="flex items-center gap-2 font-semibold text-sm tracking-tight">
-                    <div class="w-2 h-2 bg-accent rounded-full shadow-[0_0_12px_var(--accent)]"></div>
+        <Layout style={{ height: '100%' }}>
+            <Header style={{ backgroundColor: 'var(--semi-color-bg-1)', borderBottom: '1px solid var(--semi-color-border)', padding: '0 24px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--semi-color-primary)', boxShadow: '0 0 8px var(--semi-color-primary)' }}></div>
                     DEPENDENCY GRAPH
                 </div>
-                <button
-                    class="bg-gradient-to-br from-accent to-accent-hover text-white px-4 py-1.5 rounded-md cursor-pointer text-xs font-medium flex items-center gap-1.5 transition-all shadow-sm hover:-translate-y-px"
-                    onClick={loadGraph}>Refresh Graph</button>
-            </header>
-            <div ref={containerRef} class="flex-1 w-full h-full bg-[#111]"></div>
-            <div class="absolute bottom-5 right-5 bg-sub p-2 rounded-lg border border-border flex gap-2 shadow-lg">
-                <div class="text-[11px] text-neutral-400">Scroll to Zoom • Drag to Pan</div>
-            </div>
-        </div>
+                <Button icon={<RefreshCcw size={16} />} onClick={loadGraph}>Refresh Graph</Button>
+            </Header>
+            <Content>
+                <div ref={containerRef} style={{ width: '100%', height: '100%', backgroundColor: 'var(--semi-color-bg-0)' }}></div>
+                <div style={{ position: 'absolute', bottom: 20, right: 20, backgroundColor: 'var(--semi-color-bg-2)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--semi-color-border)', fontSize: 11, color: 'var(--semi-color-text-2)' }}>
+                    Scroll to Zoom • Drag to Pan
+                </div>
+            </Content>
+        </Layout>
     );
 }

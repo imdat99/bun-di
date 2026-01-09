@@ -2,7 +2,10 @@ import './style.css'
 import typescriptLogo from './typescript.svg'
 import viteLogo from '/vite.svg'
 import { setupCounter } from './counter.ts'
-
+if (import.meta.hot) {
+  console.log('HMR is enabled', import.meta.hot.on)
+  import.meta.hot.on('hono_dir:update', d => { console.log('Hono directory updated:', d) });
+}
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div>
     <a href="https://vite.dev" target="_blank">

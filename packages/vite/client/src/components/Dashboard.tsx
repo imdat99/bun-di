@@ -1,7 +1,9 @@
-
 import { useEffect, useState } from 'preact/hooks';
 import { callApi } from '../api';
 import { Box, Layers, Component, FileCode } from 'lucide-preact';
+import { Card, Typography, Spin, Row, Col } from '@douyinfe/semi-ui';
+
+const { Title, Text } = Typography;
 
 export function Dashboard() {
     const [stats, setStats] = useState<any>(null);
@@ -10,33 +12,45 @@ export function Dashboard() {
         callApi('stats').then(setStats).catch(console.error);
     }, []);
 
-    if (!stats) return <div class="p-8">Loading...</div>;
+    if (!stats) return <div style={{ padding: 40, display: 'flex', justifyContent: 'center' }}><Spin size="large" /></div>;
 
     const cards = [
-        { id: 'modules', label: 'Modules', val: stats.modules, icon: Box },
-        { id: 'controllers', label: 'Controllers', val: stats.controllers, icon: Layers },
-        { id: 'services', label: 'Services', val: stats.services, icon: Component },
-        { id: 'files', label: 'Total Files', val: stats.files, icon: FileCode },
+        { id: 'modules', label: 'Modules', val: stats.modules, icon: Box, color: 'var(--semi-color-primary)' },
+        { id: 'controllers', label: 'Controllers', val: stats.controllers, icon: Layers, color: 'var(--semi-color-success)' },
+        { id: 'services', label: 'Services', val: stats.services, icon: Component, color: 'var(--semi-color-warning)' },
+        { id: 'files', label: 'Total Files', val: stats.files, icon: FileCode, color: 'var(--semi-color-info)' },
     ];
 
     return (
-        <div class="p-8 overflow-y-auto w-full">
-            <div class="mb-8">
-                <div class="text-2xl font-semibold mb-2">Project Overview</div>
-                <div class="text-neutral-400 text-sm">Real-time statistics of your DI container</div>
+        <div style={{ padding: 24 }}>
+            <div style={{ marginBottom: 24 }}>
+                <Title heading={3}>Project Overview</Title>
+                <Text type="secondary">Real-time statistics of your DI container</Text>
             </div>
-            <div class="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-5 mb-10">
+
+            <Row gutter={[16, 16]}>
                 {cards.map(c => (
-                    <div key={c.id} class="bg-card border border-border rounded-xl p-5 flex flex-col gap-2 relative overflow-hidden group">
-                        <div class="absolute top-0 left-0 w-full h-0.5 bg-accent opacity-50 group-hover:opacity-100 transition-opacity"></div>
-                        <span class="text-neutral-400 text-xs font-medium uppercase tracking-wider">{c.label}</span>
-                        <span class="text-3xl font-bold text-white tracking-tight">{c.val}</span>
-                        <div class="absolute right-5 bottom-5 opacity-10 text-current w-12 h-12">
-                            <c.icon size={48} strokeWidth={1.5} />
-                        </div>
-                    </div>
+                    <Col span={6} key={c.id} xs={24} sm={12} md={6}>
+                        <Card
+                            shadows='hover'
+                            bodyStyle={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 20 }}
+                            style={{ borderRadius: '12px' }}
+                        >
+                            <div>
+                                <Text type="secondary" style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{c.label}</Text>
+                                <div style={{ fontSize: 28, fontWeight: 700, marginTop: 4 }}>{c.val}</div>
+                            </div>
+                            <div style={{
+                                width: 48, height: 48, borderRadius: 12,
+                                backgroundColor: `${c.color}20`, color: c.color,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <c.icon size={24} />
+                            </div>
+                        </Card>
+                    </Col>
                 ))}
-            </div>
+            </Row>
         </div>
     );
 }

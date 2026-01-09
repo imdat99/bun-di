@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@douyinfe/semi-ui": "^2.86.0",
     "clsx": "^2.1.1",
     "lucide-preact": "^0.562.0",
     "preact": "^10.27.2",

@@ -18,14 +18,6 @@ const isIgnored = (p: string) =>
   p.includes("/.idea/") ||
   p.includes("/.vscode/")
 
-function resolveSafe(root: string, rel: string) {
-  const abs = path.resolve(root, rel)
-  const relCheck = path.relative(root, abs)
-  if (relCheck.startsWith('..') || path.isAbsolute(relCheck)) {
-    throw new Error("Invalid path: Access denied")
-  }
-  return abs
-}
 
 function debounce<T extends (...args: any[]) => any>(fn: T, ms: number) {
   let timer: NodeJS.Timeout
@@ -205,7 +197,19 @@ export default function hono_diVisualizer(): Plugin {
       serverRef.ws.send({ type: "custom", event: "hono_di:update", data: cached })
     } catch (e) { serverRef.config.logger.error(`[hono_di] Error: ${e}`) }
   }, 100)
-
+function resolveSafe(root: string, rel: string) {
+  // Strip leading slashes to ensure path is treated as relative
+  const normalizedRel = rel.replace(/^[/\\]+/, '');
+  const abs = path.resolve(root, normalizedRel);
+  const relCheck = path.relative(root, abs);
+  
+  // serverRef.config.logger.info(`[hono_di] READ ${rel} -> ${abs}`, { timestamp: true });
+  
+  if (relCheck.startsWith('..') || path.isAbsolute(relCheck)) {
+    throw new Error(`Invalid path: Access denied`)
+  }
+  return abs
+}
   return {
     name: "vite-plugin-hono_di-visualizer",
     apply: "serve",
@@ -285,6 +289,19 @@ export default function hono_diVisualizer(): Plugin {
             await fs.writeFile(abs, "")
             return res.end(JSON.stringify({ success: true }))
           }
+          if (pathOnly === "/file/read") {
+            try {
+              const body = await parseBody(req)
+              const abs = resolveSafe(server.config.root, body.path)
+              const content = await fs.readFile(abs, 'utf-8')
+              res.setHeader("Content-Type", "application/json");
+              return res.end(JSON.stringify({ content }))
+            } catch (e: any) {
+              server.config.logger.error(`[hono_di] Error: ${e}`)
+              res.statusCode = 500
+              return res.end(JSON.stringify({ error: e.message }))
+            }
+          }
           if (pathOnly === "/dir/create") {
             const body = await parseBody(req)
             const abs = resolveSafe(server.config.root, body.path)
@@ -330,7 +347,6 @@ export default function hono_diVisualizer(): Plugin {
             try {
               const htmlPath = path.join(clientDist, 'index.html');
               let html = await fs.readFile(htmlPath, 'utf-8');
-              html = html.replace('</head>', '<script type="module" src="/@vite/client"></script></head>');
               res.setHeader('Content-Type', 'text/html');
               res.end(html);
             } catch (e) {

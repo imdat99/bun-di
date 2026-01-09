@@ -1,6 +1,6 @@
 
 import { useRef, useEffect } from 'preact/hooks';
-import { FilePlus, Edit, Trash2 } from 'lucide-preact';
+import { FilePlus, Edit, Trash2, FolderPlus, Zap } from 'lucide-preact';
 
 interface ContextMenuProps {
     x: number;
@@ -25,41 +25,47 @@ export function ContextMenu({ x, y, onClose, onAction }: ContextMenuProps) {
     return (
         <div
             ref={ref}
-            className="fixed z-50 w-48 bg-[#27272a] border border-[#3f3f46] rounded-md shadow-xl py-1"
-            style={{ top: y, left: x }}
+            className="fixed z-[2000] min-w-[160px] rounded-md shadow-xl py-1 font-sans text-[13px]"
+            style={{
+                top: y,
+                left: x,
+                backgroundColor: 'var(--semi-color-bg-3)',
+                border: '1px solid var(--semi-color-border)',
+                color: 'var(--semi-color-text-0)'
+            }}
         >
-            <button
+            <div
                 onClick={() => onAction('new-file')}
-                className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-[#3f3f46] hover:text-white flex items-center gap-2"
+                className="w-full text-left px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-[var(--semi-color-fill-0)] transition-colors"
             >
                 <FilePlus size={14} /> New File
-            </button>
-            <button
+            </div>
+            <div
                 onClick={() => onAction('new-folder')}
-                className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-[#3f3f46] hover:text-white flex items-center gap-2"
+                className="w-full text-left px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-[var(--semi-color-fill-0)] transition-colors"
             >
-                <FilePlus size={14} /> New Folder
-            </button>
-            <div className="h-px bg-[#3f3f46] my-1 mx-2" />
-            <button
+                <FolderPlus size={14} /> New Folder
+            </div>
+            <div className="h-px bg-[var(--semi-color-border)] my-1 mx-2" />
+            <div
                 onClick={() => onAction('generate')}
-                className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-[#3f3f46] hover:text-white flex items-center gap-2"
+                className="w-full text-left px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-[var(--semi-color-fill-0)] transition-colors"
             >
-                <FilePlus size={14} /> Generate...
-            </button>
-            <div className="h-px bg-[#3f3f46] my-1 mx-2" />
-            <button
+                <Zap size={14} /> Generate...
+            </div>
+            <div className="h-px bg-[var(--semi-color-border)] my-1 mx-2" />
+            <div
                 onClick={() => onAction('rename')}
-                className="w-full text-left px-3 py-2 text-sm text-neutral-300 hover:bg-[#3f3f46] hover:text-white flex items-center gap-2"
+                className="w-full text-left px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-[var(--semi-color-fill-0)] transition-colors"
             >
                 <Edit size={14} /> Rename
-            </button>
-            <button
+            </div>
+            <div
                 onClick={() => onAction('delete')}
-                className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-[#3f3f46] hover:text-red-300 flex items-center gap-2"
+                className="w-full text-left px-3 py-2 cursor-pointer flex items-center gap-2 hover:bg-[var(--semi-color-fill-0)] transition-colors text-red-500 hover:text-red-600"
             >
                 <Trash2 size={14} /> Delete
-            </button>
+            </div>
         </div>
     );
 }

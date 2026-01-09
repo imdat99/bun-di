@@ -5,4 +5,7 @@ import honoDiVite from '../../packages/vite/dist'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [honoDiVite()],
+  server: {
+    port: 3001,
+  },
 })
