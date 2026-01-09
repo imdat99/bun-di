@@ -9,6 +9,7 @@ import { Scope } from './scope';
 export abstract class ModuleRef {
     abstract get<TInput = any, TResult = TInput>(typeOrToken: Type<TInput> | string | symbol, options?: { strict: boolean }): TResult;
     abstract resolve<TInput = any, TResult = TInput>(typeOrToken: Type<TInput> | string | symbol, contextId?: ContextId, options?: { strict: boolean }): Promise<TResult>;
+    abstract create<TInput = any>(type: Type<TInput>, contextId?: ContextId): Promise<TInput>;
 }
 
 export class ModuleRefImpl extends ModuleRef {
@@ -60,5 +61,19 @@ export class ModuleRefImpl extends ModuleRef {
         }
 
         return this.injector.loadInstance(wrapper, contextId || new ContextId()) as Promise<TResult>;
+    }
+
+    async create<TInput = any>(type: Type<TInput>, contextId?: ContextId): Promise<TInput> {
+        // Create a new instance without registering it
+        // This is for dynamic instantiation
+        const instance = await this.injector.resolveConstructorParams(
+            { metatype: type } as any,
+            this.moduleRef,
+            Reflect.getMetadata('design:paramtypes', type) || [],
+            () => {},
+            contextId || new ContextId()
+        );
+        
+        return new (type as any)(...instance);
     }
 }

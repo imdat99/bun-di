@@ -6,7 +6,7 @@ import { InstanceWrapper } from '../injector/instance-wrapper';
 import { Scope } from '../injector/scope';
 import { ContextId } from '../injector/context-id';
 import { Inject } from '../decorators';
-import { HonoDiScanner } from '../scanner';
+import { Scanner } from '../scanner';
 
 // Test security vulnerabilities
 describe('Security', () => {

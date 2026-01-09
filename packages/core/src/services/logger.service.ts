@@ -1,4 +1,4 @@
-import { ILogger } from "../core";
+import { ILogger } from '../common/interfaces/ILogger';
 
 export class Logger implements ILogger {
     private static lastTimestamp?: number;

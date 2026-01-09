@@ -7,10 +7,10 @@ import { Type, DynamicModule, ForwardReference } from './interfaces';
 import { Logger } from './services/logger.service';
 
 
-export class HonoDiScanner {
+export class Scanner {
     constructor(private readonly container: Container) { }
 
-    private readonly logger = new Logger('HonoDiScanner');
+    private readonly logger = new Logger('Scanner');
 
     public async scan(module: Type<any>) {
         // this.logger.log('Scanning modules...');

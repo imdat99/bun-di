@@ -2,29 +2,23 @@
 import { Hono, Context, Next } from 'hono';
 import { Observable, from, lastValueFrom } from 'rxjs';
 import { mergeMap } from 'rxjs/operators';
-import { IApplication, ExceptionFilter, PipeTransform, Interceptor, CanActivate, Type } from './interfaces';
-import { Container } from './injector/container';
-import { Injector } from './injector/injector';
-import { ContextId } from './injector/context-id';
-import { Scope } from './injector/scope';
-import { InstanceWrapper } from './injector/instance-wrapper';
-import { ExecutionContextHost } from './execution-context-host';
-import { METADATA_KEYS } from './constants';
-import { RouteDefinition, RouteParamtypes, RequestMethod } from './decorators';
-import { MiddlewareBuilder } from './middleware/builder';
-import { HttpException } from './common/exceptions';
+import { IApplication, ExceptionFilter, PipeTransform, Interceptor, CanActivate, Type } from '../interfaces';
+import { Container, Injector, ContextId, Scope, InstanceWrapper, } from '../injector';
+import { ExecutionContextHost } from '../execution-context-host';
+import { METADATA_KEYS } from '../constants';
+import { RouteDefinition, RouteParamtypes, RequestMethod } from '../decorators';
+import { MiddlewareBuilder } from '../middleware/builder';
+import { HttpException } from '../common/exceptions';
 import { StatusCode } from 'hono/utils/http-status';
-import { Logger } from './services/logger.service';
-import { HonoDiScanner } from './scanner';
+import { Logger } from '../services/logger.service';
+import { Scanner } from '../scanner';
+import { ContextManager } from './context-manager';
+import { LifecycleManager } from './lifecycle-manager';
+import { ArgumentResolver, ParsedArgMetadata } from './argument-resolver';
+import { ExceptionHandler } from './exception-handler';
+import { MiddlewareHandler } from './middleware-handler';
 
 // Performance: Cache for route metadata and resolved instances
-interface ParsedArgMetadata {
-    index: number;
-    data?: any;
-    paramtype: RouteParamtypes;
-    pipes: any[];
-}
-
 interface RouteCache {
     wrapper: InstanceWrapper;
     handler: Function;
@@ -37,13 +31,36 @@ interface RouteCache {
     redirect?: any;
 }
 
-export class HonoDiApplication implements IApplication {
+/**
+ * The main application class for Hono DI
+ * 
+ * @remarks
+ * This class manages the application lifecycle, route registration, middleware,
+ * and dependency injection container. It wraps a Hono instance and adds DI capabilities.
+ * 
+ * @example
+ * ```typescript
+ * const app = await HonoDiFactory.create(AppModule);
+ * app.useGlobalGuards(new AuthGuard());
+ * app.setGlobalPrefix('api');
+ * await app.listen({ port: 3000 });
+ * ```
+ * 
+ * @public
+ */
+export class Application implements IApplication {
     private globalFilters: ExceptionFilter[] = [];
     private globalPipes: PipeTransform[] = [];
     private globalGuards: CanActivate[] = [];
     private globalInterceptors: Interceptor[] = [];
-    private readonly scanner: HonoDiScanner;
-    private readonly activeContexts = new Set<ContextId>();
+    private readonly scanner: Scanner;
+    
+    // Delegate to managers
+    private readonly contextManager = new ContextManager();
+    private readonly lifecycleManager = new LifecycleManager();
+    private readonly argumentResolver = new ArgumentResolver();
+    private readonly exceptionHandler = new ExceptionHandler();
+    private readonly middlewareHandler = new MiddlewareHandler();
 
     // Security: Dangerous property names that should not be injected
     private readonly UNSAFE_PROPERTIES = new Set(['__proto__', 'constructor', 'prototype']);
@@ -56,24 +73,76 @@ export class HonoDiApplication implements IApplication {
         private readonly container: Container,
         private readonly injector: Injector
     ) {
-        this.scanner = new HonoDiScanner(container);
+        this.scanner = new Scanner(container);
     }
 
+    /**
+     * Registers global exception filters
+     * 
+     * @param filters - Exception filter instances or classes
+     * @returns This application instance for chaining
+     * 
+     * @example
+     * ```typescript
+     * app.useGlobalFilters(new HttpExceptionFilter());
+     * ```
+     * 
+     * @public
+     */
     useGlobalFilters(...filters: ExceptionFilter[]): this {
         this.globalFilters.push(...filters);
         return this;
     }
 
+    /**
+     * Registers global pipes for request transformation/validation
+     * 
+     * @param pipes - Pipe instances or classes
+     * @returns This application instance for chaining
+     * 
+     * @example
+     * ```typescript
+     * app.useGlobalPipes(new ValidationPipe());
+     * ```
+     * 
+     * @public
+     */
     useGlobalPipes(...pipes: PipeTransform[]): this {
         this.globalPipes.push(...pipes);
         return this;
     }
 
+    /**
+     * Registers global interceptors for request/response manipulation
+     * 
+     * @param interceptors - Interceptor instances or classes
+     * @returns This application instance for chaining
+     * 
+     * @example
+     * ```typescript
+     * app.useGlobalInterceptors(new LoggingInterceptor());
+     * ```
+     * 
+     * @public
+     */
     useGlobalInterceptors(...interceptors: Interceptor[]): this {
         this.globalInterceptors.push(...interceptors);
         return this;
     }
 
+    /**
+     * Registers global guards for route protection
+     * 
+     * @param guards - Guard instances or classes
+     * @returns This application instance for chaining
+     * 
+     * @example
+     * ```typescript
+     * app.useGlobalGuards(new AuthGuard());
+     * ```
+     * 
+     * @public
+     */
     useGlobalGuards(...guards: CanActivate[]): this {
         this.globalGuards.push(...guards);
         return this;
@@ -81,6 +150,24 @@ export class HonoDiApplication implements IApplication {
 
     private globalPrefix: string = '';
 
+    /**
+     * Sets a global prefix for all routes
+     * 
+     * @param prefix - URL prefix (e.g., 'api' or 'api/v1')
+     * @returns This application instance for chaining
+     * 
+     * @remarks
+     * Must be called before init() if using autoInit: true.
+     * Use autoInit: false in HonoDiFactory.create() to set prefix before initialization.
+     * 
+     * @example
+     * ```typescript
+     * app.setGlobalPrefix('api/v1');
+     * // All routes will be prefixed with /api/v1
+     * ```
+     * 
+     * @public
+     */
     setGlobalPrefix(prefix: string): this {
         if (this.isInitialized) {
             this.logger.warn('Setting global prefix after initialization will not affect existing routes. Use { autoInit: false } in HonoDiFactory.create() if you need to set a prefix.');
@@ -91,9 +178,23 @@ export class HonoDiApplication implements IApplication {
 
     public getGlobalPrefix() { return this.globalPrefix; }
 
-    private readonly logger = new Logger('HonoDiApplication');
+    private readonly logger = new Logger('Application');
     private isInitialized = false;
 
+    /**
+     * Initializes the application by registering all routes and middleware
+     * 
+     * @returns Promise resolving to this application instance
+     * 
+     * @remarks
+     * Called automatically unless autoInit: false is specified in HonoDiFactory.create().
+     * Handles:
+     * - Middleware registration
+     * - Controller and route registration
+     * - Lifecycle hook execution (OnApplicationBootstrap)
+     * 
+     * @public
+     */
     async init(): Promise<this> {
         if (this.isInitialized) return this;
 
@@ -208,7 +309,7 @@ export class HonoDiApplication implements IApplication {
 
             (app as any)[route.requestMethod](fullPath, async (c: any) => {
                 const contextId = new ContextId();
-                this.activeContexts.add(contextId);
+                this.contextManager.addContext(contextId);
 
                 // Performance: Use cached metadata
                 const cacheKey = `${controllerClass.name}.${route.methodName}`;
@@ -295,7 +396,16 @@ export class HonoDiApplication implements IApplication {
                     return c.json(result);
 
                 } catch (exception) {
-                    return await this.handleException(exception, c, controllerClass, route.methodName, moduleRef, contextId);
+                    return await this.exceptionHandler.handle(
+                        exception,
+                        c,
+                        controllerClass,
+                        route.methodName,
+                        moduleRef,
+                        contextId,
+                        this.globalFilters,
+                        this.resolveContextItems.bind(this)
+                    );
                 } finally {
                     // Cleanup request-scoped instances after request completes
                     this.cleanupContext(contextId);
@@ -303,52 +413,6 @@ export class HonoDiApplication implements IApplication {
             });
 
             this.logger.log(`[Route] Mapped {${fullPath}, ${route.requestMethod.toUpperCase()}}`);
-        });
-    }
-
-    private async handleException(exception: any, c: Context, controllerClass: any, methodName: string, moduleRef: any, contextId: any) {
-        const filters = await this.resolveContextItems(
-            [
-                ...(Reflect.getMetadata(METADATA_KEYS.USE_FILTERS, (moduleRef.controllers.get(controllerClass)?.instance as any)?.[methodName]) || []),
-                ...(Reflect.getMetadata(METADATA_KEYS.USE_FILTERS, controllerClass) || []),
-                ...this.globalFilters
-            ],
-            moduleRef,
-            contextId
-        );
-
-        for (const filter of filters) {
-            const catchExceptions = Reflect.getMetadata(METADATA_KEYS.FILTER_CATCH, filter.constructor) || [];
-            if (catchExceptions.length === 0 || catchExceptions.some((e: any) => exception instanceof e)) {
-                const host = new ExecutionContextHost([c], controllerClass, (moduleRef.controllers.get(controllerClass)?.instance as any)?.[methodName]);
-                return await filter.catch(exception, host);
-            }
-        }
-
-        this.logger.error(exception);
-
-        if (exception instanceof HttpException) {
-            const status = exception.getStatus();
-            const response = exception.getResponse();
-            c.status(status as StatusCode);
-            return c.json(response);
-        }
-
-        if (exception instanceof Error) {
-            c.status(500);
-            return c.json({
-                statusCode: 500,
-                message: 'Internal Server Error',
-                cause: exception.message
-            });
-        }
-
-        // Default handler for non-Error exceptions
-        c.status(500);
-        return c.json({
-            statusCode: 500,
-            message: 'Internal Server Error',
-            error: String(exception)
         });
     }
 
@@ -523,7 +587,7 @@ export class HonoDiApplication implements IApplication {
                         metatype: m,
                         scope: Scope.TRANSIENT
                     });
-                    const scanner = new HonoDiScanner(this.container);
+                    const scanner = new Scanner(this.container);
                     scanner.scanDependencies(wrapper);
                     const hostModule = config.module || modules.values().next().value;
                     wrapper.host = hostModule;
@@ -644,10 +708,10 @@ export class HonoDiApplication implements IApplication {
         await this.callLifecycleHook('beforeApplicationShutdown');
 
         // Cleanup all active contexts
-        for (const contextId of this.activeContexts) {
+        for (const contextId of this.contextManager.getActiveContexts()) {
             this.cleanupContext(contextId);
         }
-        this.activeContexts.clear();
+        this.contextManager.clearAll();
 
         // Cleanup all request-scoped instances
         const modules = this.container.getModules();
@@ -669,7 +733,7 @@ export class HonoDiApplication implements IApplication {
     }
 
     private cleanupContext(contextId: ContextId): void {
-        this.activeContexts.delete(contextId);
+        this.contextManager.removeContext(contextId);
 
         // Cleanup instances for this context
         const modules = this.container.getModules();

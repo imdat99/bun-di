@@ -1,17 +1,17 @@
 import { describe, expect, test, beforeEach } from 'bun:test';
 import 'reflect-metadata';
-import { HonoDiScanner } from '../scanner';
+import { Scanner } from '../scanner';
 import { Container } from '../injector/container';
 import { Module, Injectable, Controller } from '../decorators';
 import { HonoDiFactory } from '../factory';
 
 describe('Scanner', () => {
   let container: Container;
-  let scanner: HonoDiScanner;
+  let scanner: Scanner;
 
   beforeEach(() => {
     container = new Container();
-    scanner = new HonoDiScanner(container);
+    scanner = new Scanner(container);
   });
 
   test('should scan a simple module with providers', async () => {

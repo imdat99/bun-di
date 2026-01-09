@@ -17,24 +17,115 @@ export interface RouteDefinition {
     methodName: string;
 }
 
+/**
+ * Marks a module as global, making its exports available across the entire application
+ * 
+ * @remarks
+ * Global modules are singletons - they are instantiated once and shared across all modules.
+ * Use sparingly, typically for utility modules like logging, configuration, etc.
+ * 
+ * @example
+ * ```typescript
+ * @Global()
+ * @Module({
+ *   providers: [LoggerService],
+ *   exports: [LoggerService]
+ * })
+ * class LoggerModule {}
+ * ```
+ * 
+ * @public
+ */
 export function Global(): ClassDecorator {
     return (target: any) => {
         Reflect.defineMetadata(METADATA_KEYS.GLOBAL, true, target);
     };
 }
 
+/**
+ * Defines a module in the DI container
+ * 
+ * @param options - Module configuration
+ * @param options.imports - Other modules whose exports should be available in this module
+ * @param options.providers - Services/providers that belong to this module
+ * @param options.controllers - Controllers that belong to this module
+ * @param options.exports - Subset of providers to make available to other modules
+ * 
+ * @example
+ * ```typescript
+ * @Module({
+ *   imports: [DatabaseModule],
+ *   controllers: [UserController],
+ *   providers: [UserService, UserRepository],
+ *   exports: [UserService]
+ * })
+ * class UserModule {}
+ * ```
+ * 
+ * @public
+ */
 export function Module(options: ModuleOptions): ClassDecorator {
     return (target: any) => {
         Reflect.defineMetadata(METADATA_KEYS.MODULE, options, target);
     };
 }
 
+/**
+ * Marks a class as available for dependency injection
+ * 
+ * @param options - Injectable configuration
+ * @param options.scope - Lifecycle scope (DEFAULT, REQUEST, or TRANSIENT)
+ * 
+ * @remarks
+ * - DEFAULT (singleton): One instance shared across the application
+ * - REQUEST: New instance per request
+ * - TRANSIENT: New instance every time it's injected
+ * 
+ * @example
+ * Singleton service (default):
+ * ```typescript
+ * @Injectable()
+ * class UserService {
+ *   constructor(private db: DatabaseService) {}
+ * }
+ * ```
+ * 
+ * @example
+ * Request-scoped service:
+ * ```typescript
+ * @Injectable({ scope: Scope.REQUEST })
+ * class RequestContextService {
+ *   private requestId: string;
+ * }
+ * ```
+ * 
+ * @public
+ */
 export function Injectable(options?: InjectableOptions): ClassDecorator {
     return (target: any) => {
         Reflect.defineMetadata(METADATA_KEYS.SCOPE, options?.scope ?? Scope.DEFAULT, target);
     };
 }
 
+/**
+ * Marks a class as a controller and defines its route prefix
+ * 
+ * @param prefix - Base URL path for all routes in this controller
+ * 
+ * @example
+ * ```typescript
+ * @Controller('/users')
+ * class UserController {
+ *   @Get('/:id')
+ *   findOne(@Param('id') id: string) {
+ *     return { id };
+ *   }
+ * }
+ * // Creates route: GET /users/:id
+ * ```
+ * 
+ * @public
+ */
 export function Controller(prefix: string = ''): ClassDecorator {
     return (target: any) => {
         Reflect.defineMetadata(METADATA_KEYS.CONTROLLER, { prefix }, target);

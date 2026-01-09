@@ -177,14 +177,6 @@ export interface RouteMetadataCache {
     pipes: PipeTransform[];
 }
 
-export interface ModuleRef {
-    getProvider(token: any): any;
-    controllers: Map<any, any>;
-    metatype: Type<any>;
-    providers: Map<any, any>;
-    imports: Set<any>;
-}
-
 export interface CleanupHandler {
     cleanup(): Promise<void> | void;
 }
