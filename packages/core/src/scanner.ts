@@ -120,12 +120,14 @@ export class HonoDiScanner {
         if (!isPlainObject) {
             // Standard Class Provider
             const token = provider;
+            // Read scope from decorator metadata  
+            const providerScope = Reflect.getMetadata(METADATA_KEYS.SCOPE, provider) ?? Scope.DEFAULT;
             const wrapper = new InstanceWrapper({
                 token,
                 name: token.name,
                 metatype: provider,
                 host: moduleRef,
-                scope: Scope.DEFAULT
+                scope: providerScope
             });
             this.scanDependencies(wrapper);
             moduleRef.addProvider(wrapper);
@@ -159,12 +161,14 @@ export class HonoDiScanner {
 
     private insertController(controller: any, moduleRef: Module) {
         const token = controller;
+        // Read scope from decorator metadata
+        const controllerScope = Reflect.getMetadata(METADATA_KEYS.SCOPE, controller) ?? Scope.DEFAULT;
         const wrapper = new InstanceWrapper({
             token,
             name: token.name,
             metatype: controller,
             host: moduleRef,
-            scope: Scope.DEFAULT
+            scope: controllerScope
         });
         this.scanDependencies(wrapper);
         moduleRef.addController(wrapper);

@@ -40,6 +40,7 @@ export class InstanceWrapper<T = any> {
         this.useExisting = metadata.useExisting;
         this.isAlias = !!metadata.useExisting;
         this.isOptional = metadata.isOptional;
+        this.properties = metadata.properties;
         this.id = Math.random().toString(36).substring(7); // Simple ID for now
     }
 

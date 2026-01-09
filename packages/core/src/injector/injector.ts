@@ -85,35 +85,34 @@ export class Injector {
     }
 
     private lookupProvider(token: InjectionToken, module: Module): InstanceWrapper | undefined {
-        if (module.hasProvider(token)) {
-            return module.getProvider(token);
-        }
+        // Performance: Single Map lookup instead of has() + get()
+        let wrapper = module.getProvider(token);
+        if (wrapper) return wrapper;
 
-        // Check imports
-        // Strict encapsulation: Only resolved if exported
+        // Check imports - only if exported
         for (const importedModule of module.imports) {
             if (importedModule.exports.has(token)) {
-                if (importedModule.hasProvider(token)) {
-                    // Direct provider in imported module
-                    return importedModule.getProvider(token);
+                wrapper = importedModule.getProvider(token);
+                if (wrapper) {
+                    return wrapper;
                 }
-                // Re-export logic (recursive lookup? Nest flattens exports usually)
-                // Simplified: Check if imported module has it available (re-export scenario)
+                // Re-export: Check nested imports recursively
                 const nestedWrapper = this.lookupProvider(token, importedModule);
                 if (nestedWrapper) return nestedWrapper;
             }
         }
 
-        // Check Global Modules
+        // Check global modules
         if (this.container) {
             for (const globalModule of this.container.getGlobalModules()) {
                 if (globalModule === module) continue; // Skip self
-                // Global modules export everything? Or just what is in exports?
-                // HonoDi: Global modules still need to export providers to be visible.
+                
                 if (globalModule.exports.has(token)) {
-                    if (globalModule.hasProvider(token)) {
-                        return globalModule.getProvider(token);
+                    wrapper = globalModule.getProvider(token);
+                    if (wrapper) {
+                        return wrapper;
                     }
+                    // Re-export from global module
                     const nestedWrapper = this.lookupProvider(token, globalModule);
                     if (nestedWrapper) return nestedWrapper;
                 }
@@ -206,10 +205,12 @@ export class Injector {
             const UNSAFE_KEYS = ['__proto__', 'constructor', 'prototype'];
             for (const prop of wrapper.properties) {
                 // Security: Prevent prototype pollution
-                const keyStr = String(prop.key);
-                if (UNSAFE_KEYS.includes(keyStr)) {
-                    throw new Error(`Unsafe property injection detected: ${keyStr}`);
+                // Check if key is a string that matches unsafe patterns
+                if (typeof prop.key === 'string' && UNSAFE_KEYS.includes(prop.key)) {
+                    throw new Error(`Unsafe property injection detected: ${prop.key}`);
                 }
+                // Also check string representation for symbol keys (though symbols are generally safe)
+                // Symbol keys won't match the UNSAFE_KEYS, but we validate string keys explicitly
 
                 const propInstance = await this.resolveSingleParam(
                     prop.token,

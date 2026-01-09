@@ -216,13 +216,9 @@ export class HonoDiApplication implements IApplication {
                 const executionContext = new ExecutionContextHost([c], controllerClass, cache.handler);
 
                 try {
-                    // Performance: Direct instance access for DEFAULT scope
-                    let controllerInstance;
-                    if (cache.wrapper.scope === Scope.DEFAULT && cache.wrapper.isResolved) {
-                        controllerInstance = cache.wrapper.instance;
-                    } else {
-                        controllerInstance = await this.injector.loadInstance(cache.wrapper, contextId);
-                    }
+                    // Always resolve controller instance with current contextId
+                    // This ensures REQUEST-scoped dependencies are properly resolved per request
+                    const controllerInstance = await this.injector.loadInstance(cache.wrapper, contextId);
 
                     const handler = (controllerInstance as any)[route.methodName].bind(controllerInstance);
 

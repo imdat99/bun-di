@@ -60,7 +60,16 @@ export class Logger implements ILogger {
         
         const pid = process.pid;
         const contextMessage = context ? `[${context}] ` : '';
-        const output = message instanceof Object ? JSON.stringify(message, null, 2) : message;
+        
+        // Handle different types of messages
+        let output: string;
+        if (typeof message === 'symbol') {
+            output = message.toString();
+        } else if (message instanceof Object) {
+            output = JSON.stringify(message, null, 2);
+        } else {
+            output = String(message);
+        }
 
         const currentTimestamp = Date.now();
         const timeDiff = Logger.updateAndGetTimestampDiff(currentTimestamp);

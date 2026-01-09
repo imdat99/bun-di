@@ -16,12 +16,41 @@ export class BaseExceptionFilter implements ExceptionFilter {
             return honoCtx.json(res);
         }
 
-        // Default 500
+        // Handle Error instances
+        if (exception instanceof Error) {
+            console.error(exception);
+            honoCtx.status(500);
+            return honoCtx.json({
+                statusCode: 500,
+                message: 'Internal Server Error',
+                cause: exception.message
+            });
+        }
+
+        // Handle non-Error exceptions
         console.error(exception);
         honoCtx.status(500);
+
+        // Format error response based on exception type
+        let errorMessage: string;
+        if (typeof exception === 'symbol') {
+            // Convert symbol to string representation
+            errorMessage = exception.toString();
+        } else if (exception === null || exception === undefined) {
+            errorMessage = String(exception);
+        } else if (typeof exception === 'object') {
+            // For plain objects, stringify them
+            errorMessage = JSON.stringify(exception);
+        } else {
+            // For primitives (string, number, boolean)
+            errorMessage = String(exception);
+        }
+
         return honoCtx.json({
             statusCode: 500,
             message: 'Internal Server Error',
+            error: errorMessage
         });
     }
 }
+

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'bun:test';
 import { HonoDiFactory } from '../factory';
-import { Module, Controller, Get, Injectable, Scope } from '../decorators';
+import { Module, Controller, Get, Injectable, Scope, Param } from '../decorators';
 
 // Test memory cleanup for request-scoped instances
 describe('Memory Cleanup', () => {
@@ -134,7 +134,7 @@ describe('Memory Cleanup', () => {
             constructor(private readonly service: ConcurrentService) { }
 
             @Get('/:id')
-            async process(id: string) {
+            async process(@Param('id') id: string) {
                 return this.service.process(parseInt(id));
             }
         }
