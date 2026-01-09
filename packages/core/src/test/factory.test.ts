@@ -20,7 +20,7 @@ describe('HonoDiFactory', () => {
         const app = await HonoDiFactory.create(AppModule);
         
         expect(app).toBeDefined();
-        // app is HonoDiApplication instance
+        // app is IApplication instance
         // checking the private 'app' property (Hono instance)
         expect((app as any).app).toBeDefined();
         expect((app as any).app).toBeInstanceOf(Hono);
@@ -47,6 +47,6 @@ describe('HonoDiFactory', () => {
         
         expect(res.status).toBe(200);
         expect(await res.json()).toBe('world'); // Controller returns string, converted to JSON by HonoDi logic
-        // HonoDiApplication wraps handler result. If return string, Hono returns it.
+        // IApplication wraps handler result. If return string, Hono returns it.
     });
 });

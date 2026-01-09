@@ -1,17 +1,17 @@
-import { HonoDiApplication } from '@hono-di/core';
+import { IApplication } from '@hono-di/core';
 import { DocumentBuilder } from './document-builder';
 import { SwaggerDocument, SwaggerCustomOptions } from './interfaces';
 import { SwaggerScanner } from './explorers/api-scanner';
 
 export class SwaggerModule {
-    static createDocument(app: HonoDiApplication, config: SwaggerDocument): SwaggerDocument {
+    static createDocument(app: IApplication, config: SwaggerDocument): SwaggerDocument {
         const container = app.getContainer();
         const scanner = new SwaggerScanner(container);
         const document = config;
         return scanner.scan(document);
     }
 
-    static setup(path: string, app: HonoDiApplication, document: SwaggerDocument, options?: SwaggerCustomOptions) {
+    static setup(path: string, app: IApplication, document: SwaggerDocument, options?: SwaggerCustomOptions) {
         const httpAdapter = app.getHttpAdapter();
 
         // Serve Swagger JSON
