@@ -8,22 +8,14 @@ import { GenerateModal } from './components/GenerateModal';
 import { callApi } from './api';
 import { Plus } from 'lucide-preact';
 import { Layout, Input, Button, Modal, Toast, CodeHighlight } from '@douyinfe/semi-ui';
-
+import { loadPrismLanguageAuto } from './utils';
 const { Header, Content, Sider } = Layout;
 
 // Helper to determine language from extension
-const getLanguage = (filename: string) => {
-  const ext = filename.split('.').pop()?.toLowerCase();
-  switch (ext) {
-    case 'ts': case 'tsx': return 'typescript';
-    case 'js': case 'jsx': return 'javascript';
-    case 'json': return 'json';
-    case 'css': return 'css';
-    case 'html': return 'html';
-    case 'md': return 'markdown';
-    default: return 'plaintext';
-  }
-}
+
+
+// codeEl.className = `language-${lang}`;
+// Prism.highlightElement(codeEl);
 
 export function App() {
   const [activeTab, setActiveTab] = useState('files');
@@ -33,7 +25,7 @@ export function App() {
 
   const [sidebarWidth, setSidebarWidth] = useState(300);
   const [isResizing, setIsResizing] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<{ name: string; content: string } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{ name: string; content: string; language: string } | null>(null);
 
   const refreshTree = () => callApi('tree').then(res => setTree(res.tree)).catch(console.error);
   const openGenerate = (path: string = '') => setGenModal({ open: true, path });
@@ -87,11 +79,13 @@ export function App() {
   const handleFileSelect = async (node: any) => {
     try {
       console.log('Fetching file:', node.path);
+      const name = node.name.split('.').pop()?.toLowerCase()
+      const lang = await loadPrismLanguageAuto(name);
       const res = await callApi('file/read', { path: node.path });
       if (!res || (!res.content && res.content !== '')) {
         console.warn('API returned empty content or structure mismatch:', res);
       }
-      setSelectedFile({ name: node.name, content: res.content });
+      setSelectedFile({ name: node.name, content: res.content, language: lang });
     } catch (error: any) {
       console.error('File read error:', error);
       Toast.error(`Failed to read file: ${error.message}`);
@@ -153,11 +147,11 @@ export function App() {
                     <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--semi-color-border)', fontSize: 13, color: 'var(--semi-color-text-2)', backgroundColor: 'var(--semi-color-bg-1)' }}>
                       {selectedFile.name}
                     </div>
-                    <div style={{ flex: 1, overflow: 'auto', padding: 16 }}>
+                    <div style={{ flex: 1, overflow: 'auto' }}>
                       <CodeHighlight
+                        language={selectedFile.language}
                         key={selectedFile.name}
-                        language={getLanguage(selectedFile.name)}
-                        style={{ height: '100%', margin: 0, backgroundColor: 'transparent' }}
+                        style={{ height: '100%', margin: 0, backgroundColor: 'transparent', width: '100%' }}
                         code={selectedFile.content}
                       />
                     </div>

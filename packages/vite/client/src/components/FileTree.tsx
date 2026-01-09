@@ -57,7 +57,7 @@ export function FileTree({ tree, onRefresh, onGenerate, onSelect, searchQuery }:
         if (!filteredTree) return [];
         const mapNode = (node: TreeNode): any => ({
             key: node.path,
-            label: node.name,
+            label: <span>&nbsp;{node.name}</span>,
             icon: node.type === 'dir' ? <Folder size={16} /> : <FileIcon size={16} />,
             children: node.children ? node.children.map(mapNode) : undefined,
             data: node
@@ -148,6 +148,8 @@ export function FileTree({ tree, onRefresh, onGenerate, onSelect, searchQuery }:
             <Tree
                 treeData={treeData}
                 defaultExpandAll
+                motion
+                defaultExpandedKeys={[treeData.length > 0 ? treeData[0].key : '']}
                 renderLabel={(label, data: any) => (
                     <div
                         onContextMenu={(e) => handleContextMenu(e, data.data)}

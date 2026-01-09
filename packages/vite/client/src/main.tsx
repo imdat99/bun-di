@@ -4,7 +4,7 @@ import '@douyinfe/semi-ui/dist/css/semi.min.css';
 import { App } from './App'
 import type { UpdatePayload } from 'vite'
 
-const MODULE_PATH = 'http://localhost:3001/@vite/client'
+const MODULE_PATH = '/@vite/client'
 console.log('not in dev mode')
 import(/* @vite-ignore */ MODULE_PATH)
     .then((c) => {
